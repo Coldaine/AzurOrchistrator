@@ -1,0 +1,1 @@
+"""Core modules for Azur Lane Bot."""

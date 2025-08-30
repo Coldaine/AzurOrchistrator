@@ -1,0 +1,44 @@
+emulator:
+  kind: waydroid
+  adb_serial: "127.0.0.1:5555"
+  package_name: "com.YoStarEN.AzurLane"
+
+display:
+  target_fps: 2
+  orientation: "landscape"
+  force_resolution: null
+
+llm:
+  provider: "gemini"
+  model: "gemini-1.5-flash"
+  endpoint: "https://generativelanguage.googleapis.com/v1beta"
+  api_key_env: "GEMINI_API_KEY"
+  max_tokens: 2048
+  temperature: 0.1
+
+resolver:
+  ocr: "paddle"
+  thresholds:
+    ocr_text: 0.75
+    ncc_edge: 0.60
+    ncc_gray: 0.70
+    orb_inliers: 12
+    combo_accept: 0.65
+  regions:
+    top_bar: [0.00, 0.00, 1.00, 0.12]
+    bottom_bar: [0.00, 0.85, 1.00, 0.15]
+    left_panel: [0.00, 0.12, 0.20, 0.73]
+    center: [0.20, 0.12, 0.60, 0.73]
+    right_panel: [0.80, 0.12, 0.20, 0.73]
+
+data:
+  base_dir: "~/.azlbot"
+
+logging:
+  level: "INFO"
+  keep_frames: true
+  overlay_draw: true
+
+ui:
+  show_llm_json: false
+  zoom_overlay: true
