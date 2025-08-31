@@ -1,6 +1,6 @@
 # Azur Lane Bot — Automated Game Assistant
 
-An automated assistant for the mobile game Azur Lane, designed to run on Debian Linux with Waydroid emulation.
+An automated assistant for the mobile game Azur Lane, designed to run on Linux with Android emulation.
 
 ## Features
 
@@ -27,16 +27,25 @@ The bot follows a **Sense → Think → Act → Check** loop:
 
 ## Requirements
 
-- **Target OS**: Debian Linux
-- **Android Environment**: Waydroid
+- **Target OS**: Linux (tested on Nobara/Fedora)
+- **Android Emulator**: Genymotion (Personal Edition)
+  - Note: Uses standard ADB interface only
+  - Does NOT use Genymotion-specific scripting features
 - **Python**: ≥ 3.10
 - **Dependencies**: See pyproject.toml
 
 ## Installation
 
 ```bash
-# Install system dependencies
-sudo apt-get install -y android-tools-adb tesseract-ocr
+# Install Genymotion Personal Edition
+# Download from: https://www.genymotion.com/product-desktop/download/
+# Select "Personal Use" when first running
+
+# Install system dependencies (Fedora/Nobara)
+sudo dnf install -y android-tools tesseract
+
+# For Debian/Ubuntu:
+# sudo apt-get install -y android-tools-adb tesseract-ocr
 
 # Install Python package
 pip install -e .

@@ -11,11 +11,11 @@ from .capture import Frame
 
 class Regions:
     """Predefined screen regions in normalized coordinates."""
-    top_bar = (0.00, 0.00, 1.00, 0.12)
-    bottom_bar = (0.00, 0.85, 1.00, 0.15)
-    left_panel = (0.00, 0.12, 0.20, 0.73)
-    center = (0.20, 0.12, 0.60, 0.73)
-    right_panel = (0.80, 0.12, 0.20, 0.73)
+    top_bar = [0.00, 0.00, 1.00, 0.12]
+    bottom_bar = [0.00, 0.85, 1.00, 0.15]
+    left_panel = [0.00, 0.12, 0.20, 0.73]
+    center = [0.20, 0.12, 0.60, 0.73]
+    right_panel = [0.80, 0.12, 0.20, 0.73]
 
 
 def expected_home_elements() -> List[str]:
@@ -212,11 +212,11 @@ def get_region_info() -> dict:
         Dictionary mapping region names to their coordinates
     """
     return {
-        'top_bar': Regions.top_bar,
-        'bottom_bar': Regions.bottom_bar,
-        'left_panel': Regions.left_panel,
-        'center': Regions.center,
-        'right_panel': Regions.right_panel
+        'top_bar': tuple(Regions.top_bar),
+        'bottom_bar': tuple(Regions.bottom_bar),
+        'left_panel': tuple(Regions.left_panel),
+        'center': tuple(Regions.center),
+        'right_panel': tuple(Regions.right_panel)
     }
 
 

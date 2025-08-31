@@ -2,7 +2,7 @@
 
 import os
 from pathlib import Path
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 import yaml
 from pydantic import BaseModel, Field
@@ -43,11 +43,11 @@ class ResolverThresholds(BaseModel):
 
 class ResolverRegions(BaseModel):
     """Predefined regions for selector resolution."""
-    top_bar: tuple[float, float, float, float] = (0.00, 0.00, 1.00, 0.12)
-    bottom_bar: tuple[float, float, float, float] = (0.00, 0.85, 1.00, 0.15)
-    left_panel: tuple[float, float, float, float] = (0.00, 0.12, 0.20, 0.73)
-    center: tuple[float, float, float, float] = (0.20, 0.12, 0.60, 0.73)
-    right_panel: tuple[float, float, float, float] = (0.80, 0.12, 0.20, 0.73)
+    top_bar: List[float] = Field(default=[0.00, 0.00, 1.00, 0.12])
+    bottom_bar: List[float] = Field(default=[0.00, 0.85, 1.00, 0.15])
+    left_panel: List[float] = Field(default=[0.00, 0.12, 0.20, 0.73])
+    center: List[float] = Field(default=[0.20, 0.12, 0.60, 0.73])
+    right_panel: List[float] = Field(default=[0.80, 0.12, 0.20, 0.73])
 
 
 class ResolverConfig(BaseModel):
