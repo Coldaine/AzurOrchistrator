@@ -8,9 +8,29 @@ display:
   orientation: "landscape"
   force_resolution: null
 
+performance:
+  hash_size: 16
+  similarity_threshold: 0.95
+  active_fps: 2.0
+  idle_fps: 0.5
+  transition_time: 5.0
+
+capture:
+  frame_rate: 2.0  # Maximum FPS
+
+hashing:
+  algorithm: "dhash"
+  hamming_threshold: 3
+  stability_frames: 2
+  regional_zones:
+    - name: "dialog"
+      bounds: [0.2, 0.2, 0.8, 0.8]
+    - name: "navigation"
+      bounds: [0.0, 0.85, 1.0, 1.0]
+
 llm:
   provider: "gemini"
-  model: "gemini-1.5-flash"
+  model: "gemini-1.5-flash-latest"
   endpoint: "https://generativelanguage.googleapis.com/v1beta"
   api_key_env: "GEMINI_API_KEY"
   max_tokens: 2048

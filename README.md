@@ -69,9 +69,16 @@ cp config/app.yaml.example config/app.yaml
 ./scripts/run_task.sh commissions
 ```
 
+### Tasks playbook
+
+For a concise, step-by-step guide to get your first end-to-end run, see:
+
+- docs/tasks/README.md
+
 ## Configuration
 
 Edit `config/app.yaml` to configure:
+
 - ADB device serial and package name
 - LLM endpoint and API key
 - OCR and vision thresholds

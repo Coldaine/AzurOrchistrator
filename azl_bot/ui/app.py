@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 
 from loguru import logger
 from PySide6.QtCore import QObject, QTimer, Signal, QThread
-from PySide6.QtGui import QPixmap, QImage
+from PySide6.QtGui import QPixmap, QImage, QTextCursor
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QComboBox, QTextEdit, QTableWidget, QTableWidgetItem,
@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
 import cv2
 import numpy as np
 
-from ..core.bootstrap import bootstrap_from_config, create_default_config
+from ..core.bootstrap import bootstrap_from_config, create_default_config, bootstrap_from_config_object
 from ..core.capture import Frame
 from ..core.configs import AppConfig
 from .overlays import OverlayRenderer
@@ -379,7 +379,7 @@ class MainWindow(QMainWindow):
             # Convert to QImage
             h, w, ch = rgb_image.shape
             bytes_per_line = ch * w
-            qt_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
+            qt_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format.Format_RGB888)
             
             # Convert to QPixmap and display
             pixmap = QPixmap.fromImage(qt_image)
@@ -448,8 +448,8 @@ class MainWindow(QMainWindow):
         document = self.status_text.document()
         if document.blockCount() > 100:
             cursor = self.status_text.textCursor()
-            cursor.movePosition(cursor.Start)
-            cursor.movePosition(cursor.Down, cursor.KeepAnchor, document.blockCount() - 100)
+            cursor.movePosition(QTextCursor.MoveOperation.Start)
+            cursor.movePosition(QTextCursor.MoveOperation.Down, QTextCursor.MoveMode.KeepAnchor, document.blockCount() - 100)
             cursor.removeSelectedText()
 
 
