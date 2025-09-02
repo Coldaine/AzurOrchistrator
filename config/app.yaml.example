@@ -1,5 +1,11 @@
 emulator:
+  # kind is informational; ADB is used for all emulators.
+  # Supported values: waydroid | memu | generic
   kind: waydroid
+  # For Waydroid default:
+  # adb_serial: "127.0.0.1:5555"
+  # For remote MEmu on LAN (example):
+  # adb_serial: "192.168.1.50:21503"  # adjust IP/port to your MEmu instance
   adb_serial: "127.0.0.1:5555"
   package_name: "com.YoStarEN.AzurLane"
 

@@ -10,7 +10,9 @@ from pydantic import BaseModel, Field
 
 class EmulatorConfig(BaseModel):
     """Emulator configuration."""
-    kind: Literal["waydroid"] = "waydroid"
+    # Supported kinds are informational; current implementation uses plain ADB.
+    # Keeping this flexible lets you label configs (e.g., "waydroid", "memu", "generic").
+    kind: Literal["waydroid", "memu", "generic"] = "waydroid"
     adb_serial: str = "127.0.0.1:5555"
     package_name: str = "com.YoStarEN.AzurLane"
 

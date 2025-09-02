@@ -8,10 +8,6 @@ An automated assistant for the mobile game Azur Lane, designed to run on Linux w
 - **Model-agnostic**: Uses selectors and resolvers instead of hardcoded pixel positions
 - **Multi-modal vision**: Combines LLM reasoning, OCR, and classical computer vision
 - **Always-on desktop UI**: PySide6-based interface with live preview and controls
-
-## Primary Goals (v0)
-
-1. Collect all easy main-menu pickups
 2. Navigate to Commissions and read/record current commissions  
 3. Read and record currency balances (Oil, Coins, Gems; Cubes optional)
 
@@ -31,12 +27,8 @@ The bot follows a **Sense → Think → Act → Check** loop:
 - **Android Emulator**: Genymotion (Personal Edition)
   - Note: Uses standard ADB interface only
   - Does NOT use Genymotion-specific scripting features
-- **Python**: ≥ 3.10
-- **Dependencies**: See pyproject.toml
 
 ## Installation
-
-```bash
 # Install Genymotion Personal Edition
 # Download from: https://www.genymotion.com/product-desktop/download/
 # Select "Personal Use" when first running
@@ -79,10 +71,19 @@ For a concise, step-by-step guide to get your first end-to-end run, see:
 
 Edit `config/app.yaml` to configure:
 
-- ADB device serial and package name
-- LLM endpoint and API key
-- OCR and vision thresholds
-- UI preferences
+
+This bot talks to emulators via standard ADB. To target a MEmu instance running on another PC on your LAN:
+
+- Set `emulator.kind` to `memu` (informational) and point `emulator.adb_serial` to the host:port of the MEmu instance, e.g. `192.168.1.50:21503`.
+- Ensure the Windows firewall allows inbound TCP to that port and that the instance binds externally (some setups are localhost-only).
+- If the device port isn’t reachable directly, you can instead expose the remote ADB server (5037) and set `ADB_SERVER_HOST`/`ADB_SERVER_PORT` in your environment.
+
+Example snippet for `config/app.yaml`:
+
+  adb_serial: "192.168.1.50:21503"  # adjust to your host and instance port
+  package_name: "com.YoStarEN.AzurLane"
+```
+
 
 ## License
 
