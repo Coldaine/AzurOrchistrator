@@ -1,5 +1,5 @@
-zl_bot/core/capture.py</path>
-<content">"""Screen capture and preprocessing."""
+
+"""Screen capture and preprocessing."""
 
 import time
 from dataclasses import dataclass
@@ -209,7 +209,7 @@ class Capture:
         """Check if a line appears to be a letterbox border.
 
         Args:
-            line: 1D array representing a row or column
+            line: One-dimensional array representing a row or column
 
         Returns:
             True if line appears to be a letterbox border
