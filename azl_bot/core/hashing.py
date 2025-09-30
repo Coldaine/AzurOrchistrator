@@ -14,6 +14,8 @@ class FrameHasher:
         self.similarity_threshold = similarity_threshold
         self._last_hash: Optional[imagehash.ImageHash] = None
         self._last_frame_data: Optional[np.ndarray] = None
+        self._stable_count: int = 0
+        self._stability_history: list[imagehash.ImageHash] = []
     
     def compute_hash(self, image: np.ndarray) -> imagehash.ImageHash:
         """Compute perceptual hash of image."""
@@ -41,7 +43,46 @@ class FrameHasher:
         
         return False
     
+    def is_stable(self, image: np.ndarray, required_matches: int = 3) -> bool:
+        """Check if frame has been stable for required number of frames.
+        
+        Args:
+            image: Image to check
+            required_matches: Number of consecutive matching frames needed for stability
+            
+        Returns:
+            True if frame has been stable for required_matches frames, False otherwise
+        """
+        current_hash = self.compute_hash(image)
+        
+        # Add current hash to history
+        self._stability_history.append(current_hash)
+        
+        # Keep only the most recent hashes (required_matches)
+        if len(self._stability_history) > required_matches:
+            self._stability_history.pop(0)
+        
+        # Check if we have enough history
+        if len(self._stability_history) < required_matches:
+            return False
+        
+        # Check if all hashes in history match within threshold
+        reference_hash = self._stability_history[0]
+        for h in self._stability_history[1:]:
+            # Calculate hamming distance
+            distance = reference_hash - h
+            # If any hash is too different, not stable
+            if distance > (self.hash_size * self.hash_size * (1 - self.similarity_threshold)):
+                # Reset history when instability detected
+                self._stability_history = [current_hash]
+                return False
+        
+        # All frames match - we're stable
+        return True
+    
     def reset(self):
         """Reset hash tracking."""
         self._last_hash = None
         self._last_frame_data = None
+        self._stable_count = 0
+        self._stability_history = []

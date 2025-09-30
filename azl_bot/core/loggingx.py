@@ -335,3 +335,101 @@ def open_run_dir(run_id: int, base_dir: Path, config: LoggingConfig) -> RunLogge
         RunLogger instance
     """
     return RunLogger(run_id, base_dir, config)
+
+
+class TelemetryTracker:
+    """Structured telemetry tracking for loop metrics."""
+    
+    def __init__(self):
+        """Initialize telemetry tracker."""
+        self.counters: Dict[str, int] = {}
+        self.timings: Dict[str, list[float]] = {}
+        self._start_times: Dict[str, float] = {}
+    
+    def increment(self, counter_name: str, amount: int = 1) -> None:
+        """Increment a counter.
+        
+        Args:
+            counter_name: Name of counter to increment
+            amount: Amount to increment by (default 1)
+        """
+        self.counters[counter_name] = self.counters.get(counter_name, 0) + amount
+        logger.debug(f"Counter '{counter_name}' incremented to {self.counters[counter_name]}")
+    
+    def start_timing(self, operation: str) -> None:
+        """Start timing an operation.
+        
+        Args:
+            operation: Name of operation being timed
+        """
+        self._start_times[operation] = time.time()
+    
+    def end_timing(self, operation: str) -> Optional[float]:
+        """End timing an operation and record duration.
+        
+        Args:
+            operation: Name of operation being timed
+            
+        Returns:
+            Duration in seconds, or None if timing was not started
+        """
+        if operation not in self._start_times:
+            logger.warning(f"Timing '{operation}' was not started")
+            return None
+        
+        duration = time.time() - self._start_times.pop(operation)
+        
+        if operation not in self.timings:
+            self.timings[operation] = []
+        self.timings[operation].append(duration)
+        
+        logger.debug(f"Operation '{operation}' took {duration:.3f}s")
+        return duration
+    
+    def get_average_timing(self, operation: str) -> Optional[float]:
+        """Get average timing for an operation.
+        
+        Args:
+            operation: Name of operation
+            
+        Returns:
+            Average duration in seconds, or None if no timings recorded
+        """
+        if operation not in self.timings or not self.timings[operation]:
+            return None
+        return sum(self.timings[operation]) / len(self.timings[operation])
+    
+    def get_stats(self) -> Dict[str, Any]:
+        """Get all telemetry statistics.
+        
+        Returns:
+            Dictionary with counters and timing averages
+        """
+        stats = {"counters": dict(self.counters)}
+        
+        timing_avgs = {}
+        for operation, durations in self.timings.items():
+            if durations:
+                timing_avgs[operation] = {
+                    "avg": sum(durations) / len(durations),
+                    "min": min(durations),
+                    "max": max(durations),
+                    "count": len(durations)
+                }
+        
+        if timing_avgs:
+            stats["timings"] = timing_avgs
+        
+        return stats
+    
+    def log_stats(self) -> None:
+        """Log current statistics."""
+        stats = self.get_stats()
+        logger.info(f"Telemetry stats: {json.dumps(stats, indent=2)}")
+    
+    def reset(self) -> None:
+        """Reset all counters and timings."""
+        self.counters.clear()
+        self.timings.clear()
+        self._start_times.clear()
+        logger.debug("Telemetry tracker reset")
