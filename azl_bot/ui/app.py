@@ -159,7 +159,7 @@ class MainWindow(QMainWindow):
         task_layout.addWidget(QLabel("Task:"))
         
         self.task_combo = QComboBox()
-        self.task_combo.addItems(["currencies", "pickups", "commissions"])
+        self.task_combo.addItems(["currencies", "pickups", "commissions", "daily_maintenance"])
         task_layout.addWidget(self.task_combo)
         
         layout.addLayout(task_layout)

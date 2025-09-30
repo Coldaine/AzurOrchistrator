@@ -222,3 +222,8 @@ class CurrenciesTask:
             currencies["coins"] = numeric_texts[0]["value"]
         
         return currencies
+
+
+def create_currencies_task() -> CurrenciesTask:
+    """Create and return a currencies task instance."""
+    return CurrenciesTask()
