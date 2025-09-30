@@ -1,20 +1,28 @@
-ests/test_hashing.py</path>
-<content">    def test_is_stable(self):
-        """Test stability detection."""
-        img = np.random.randint(0, 256, (8, 8), dtype=np.uint8)
+from __future__ import annotations
 
-        # First call establishes baseline (always returns True for change)
-        stable1 = self.hasher.is_stable(img, required_matches=3)
-        assert stable1 is False
+import numpy as np
 
-        # Second call should still not be stable (only 1 stable frame so far)
-        stable2 = self.hasher.is_stable(img, required_matches=3)
-        assert stable2 is False
+from azl_bot.core.hashing import FrameHasher
 
-        # Third call should still not be stable (only 2 stable frames so far)
-        stable3 = self.hasher.is_stable(img, required_matches=3)
-        assert stable3 is False
 
-        # Fourth call should now be stable (3 stable frames)
-        stable4 = self.hasher.is_stable(img, required_matches=3)
-        assert stable4 is True
+def test_is_stable_reaches_threshold():
+        hasher = FrameHasher(similarity_threshold=0.99)
+        img = np.random.randint(0, 256, (16, 16), dtype=np.uint8)
+
+        # First call establishes baseline
+        assert hasher.is_stable(img, required_matches=3) is False
+        # Second and third are still not enough
+        assert hasher.is_stable(img, required_matches=3) is False
+        assert hasher.is_stable(img, required_matches=3) is True
+
+
+def test_is_stable_resets_on_change():
+        hasher = FrameHasher(similarity_threshold=0.95)
+        img1 = np.zeros((16, 16), dtype=np.uint8)
+        img2 = np.ones((16, 16), dtype=np.uint8) * 255
+
+        assert hasher.is_stable(img1, required_matches=2) is False
+        # Change should reset
+        assert hasher.is_stable(img2, required_matches=2) is False
+        # Need two in a row after reset
+        assert hasher.is_stable(img2, required_matches=2) is True

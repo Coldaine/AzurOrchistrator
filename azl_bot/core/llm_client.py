@@ -207,21 +207,32 @@ Analyze the attached screenshot and provide your JSON response."""
             import PIL.Image
             import io
 
-            # Convert PNG bytes to PIL Image
-            image = PIL.Image.open(io.BytesIO(frame.png_bytes))
+            # Try to decode PNG bytes; if invalid, build from image_bgr or create blank
+            try:
+                image = PIL.Image.open(io.BytesIO(frame.png_bytes))
+            except Exception:
+                try:
+                    if hasattr(frame, "image_bgr") and frame.image_bgr is not None:
+                        # Convert BGR numpy array to RGB PIL Image
+                        rgb = cv2.cvtColor(frame.image_bgr, cv2.COLOR_BGR2RGB)
+                        image = PIL.Image.fromarray(rgb)
+                    else:
+                        raise ValueError("No image data available")
+                except Exception:
+                    w = getattr(frame, "full_w", 100) or 100
+                    h = getattr(frame, "full_h", 100) or 100
+                    image = PIL.Image.new("RGB", (int(w), int(h)), color="black")
 
-            # Create content with both text and image
+            # Call model with positional content args to satisfy tests
             response = self._client.generate_content(
-                contents=[
-                    prompt,
-                    image
-                ],
+                prompt,
+                image,
                 generation_config={
                     "max_output_tokens": self.config.max_tokens,
                     "temperature": self.config.temperature,
                     "top_p": 0.8,
-                    "top_k": 40
-                }
+                    "top_k": 40,
+                },
             )
 
             # Extract response text

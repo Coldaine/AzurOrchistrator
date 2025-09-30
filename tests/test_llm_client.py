@@ -424,6 +424,17 @@ class TestLLMClient:
 class TestLLMIntegration:
     """Integration tests for LLM functionality."""
 
+    def setup_method(self):
+        from azl_bot.core.configs import LLMConfig
+        self.config = LLMConfig(
+            provider="gemini",
+            model="gemini-1.5-flash-latest",
+            endpoint="https://generativelanguage.googleapis.com/v1beta",
+            api_key_env="GEMINI_API_KEY",
+            max_tokens=2048,
+            temperature=0.1,
+        )
+
     @patch.dict('os.environ', {'GEMINI_API_KEY': 'test_key'})
     @patch('google.generativeai.configure')
     @patch('google.generativeai.GenerativeModel')

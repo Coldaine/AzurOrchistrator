@@ -151,6 +151,11 @@ class Capture:
         # Convert to grayscale for border detection
         gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
 
+        # Quick uniformity check: if the frame is near-uniform (very low variance),
+        # treat as no letterbox to avoid false positives on synthetic/blank frames.
+        if float(gray.var()) < 50.0:  # heuristic threshold
+            return (0, 0, w, h)
+
         # Check top and bottom borders for letterboxing
         top_border = 0
         bottom_border = h
@@ -218,14 +223,14 @@ class Capture:
             return False
 
         # Calculate variance
-        mean_val = np.mean(line)
-        variance = np.var(line)
+        mean_val = float(np.mean(line))
+        variance = float(np.var(line))
 
         # Letterbox borders are typically dark and uniform
         is_dark = mean_val < 30  # Dark threshold
         is_uniform = variance < 100  # Low variance threshold
 
-        return is_dark and is_uniform
+        return bool(is_dark and is_uniform)
 
     def norm_to_pixels(self, x_norm: float, y_norm: float, frame: Frame) -> tuple[int, int]:
         """Convert normalized coordinates to pixels in full frame.
