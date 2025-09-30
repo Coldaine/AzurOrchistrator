@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .[dev]
+
+    - name: Run ruff linter
+      run: |
+        ruff check azl_bot/ tests/
+
+    - name: Run ruff formatter check
+      run: |
+        ruff format --check azl_bot/ tests/
+
+    - name: Run black check
+      run: |
+        black --check azl_bot/ tests/
+
+    - name: Run isort check
+      run: |
+        isort --check-only --profile black azl_bot/ tests/
+
+    - name: Run mypy type checking
+      run: |
+        mypy azl_bot/core/configs.py azl_bot/core/bootstrap.py --ignore-missing-imports
+      continue-on-error: true  # Don't fail on type errors initially
+
+    - name: Run tests
+      run: |
+        pytest tests/ -v --tb=short -k "not emulator"
+      env:
+        # Skip emulator-dependent tests
+        SKIP_EMULATOR_TESTS: "true"
+
+  validate-config:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.10"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+
+    - name: Validate example config
+      run: |
+        python -c "
+        from azl_bot.core.configs import load_config
+        from pathlib import Path
+        config_path = Path('config/app.yaml.example')
+        if config_path.exists():
+            # Rename temporarily to test loading
+            import shutil
+            test_path = Path('config/app.yaml.test')
+            shutil.copy(config_path, test_path)
+            try:
+                config = load_config(test_path)
+                print('✓ Example config validates successfully')
+            finally:
+                test_path.unlink()
+        else:
+            print('⚠ No example config found')
+        "

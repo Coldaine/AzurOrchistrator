@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class EmulatorConfig(BaseModel):
@@ -19,9 +19,31 @@ class EmulatorConfig(BaseModel):
 
 class DisplayConfig(BaseModel):
     """Display and capture configuration."""
-    target_fps: int = 2
+    model_config = {"validate_assignment": True}
+    
+    target_fps: int = Field(default=2, ge=1, le=60, description="Target frames per second for capture")
     orientation: Literal["landscape", "portrait"] = "landscape"
-    force_resolution: Optional[str] = None
+    force_resolution: Optional[str] = Field(default=None, description="Force specific resolution (e.g., '1920x1080')")
+    
+    @field_validator('force_resolution')
+    @classmethod
+    def validate_resolution(cls, v: Optional[str]) -> Optional[str]:
+        """Validate resolution format if provided."""
+        if v is not None and v != "":
+            if not v or 'x' not in v:
+                raise ValueError("Resolution must be in format WxH (e.g., '1920x1080')")
+            try:
+                w, h = v.split('x')
+                width, height = int(w), int(h)
+                if width < 100 or height < 100:
+                    raise ValueError("Resolution dimensions must be at least 100x100")
+                if width > 10000 or height > 10000:
+                    raise ValueError("Resolution dimensions must be less than 10000x10000")
+            except ValueError as e:
+                if "invalid literal" in str(e):
+                    raise ValueError("Resolution must contain valid integers")
+                raise
+        return v
 
 
 class LLMConfig(BaseModel):
@@ -30,26 +52,38 @@ class LLMConfig(BaseModel):
     model: str = "flash-2.5"
     endpoint: str = "https://generativelanguage.googleapis.com/v1beta"
     api_key_env: str = "GEMINI_API_KEY"
-    max_tokens: int = 2048
-    temperature: float = 0.1
+    max_tokens: int = Field(default=2048, ge=100, le=100000, description="Maximum tokens for LLM response")
+    temperature: float = Field(default=0.1, ge=0.0, le=2.0, description="LLM temperature for response generation")
 
 
 class ResolverThresholds(BaseModel):
     """Thresholds for selector resolution."""
-    ocr_text: float = 0.75
-    ncc_edge: float = 0.60
-    ncc_gray: float = 0.70
-    orb_inliers: int = 12
-    combo_accept: float = 0.65
+    ocr_text: float = Field(default=0.75, ge=0.0, le=1.0, description="OCR confidence threshold")
+    ncc_edge: float = Field(default=0.60, ge=0.0, le=1.0, description="Edge-based template matching threshold")
+    ncc_gray: float = Field(default=0.70, ge=0.0, le=1.0, description="Grayscale template matching threshold")
+    orb_inliers: int = Field(default=12, ge=1, le=1000, description="Minimum ORB feature inliers")
+    combo_accept: float = Field(default=0.65, ge=0.0, le=1.0, description="Combined method acceptance threshold")
 
 
 class ResolverRegions(BaseModel):
     """Predefined regions for selector resolution."""
-    top_bar: List[float] = Field(default=[0.00, 0.00, 1.00, 0.12])
-    bottom_bar: List[float] = Field(default=[0.00, 0.85, 1.00, 0.15])
-    left_panel: List[float] = Field(default=[0.00, 0.12, 0.20, 0.73])
-    center: List[float] = Field(default=[0.20, 0.12, 0.60, 0.73])
-    right_panel: List[float] = Field(default=[0.80, 0.12, 0.20, 0.73])
+    top_bar: List[float] = Field(default=[0.00, 0.00, 1.00, 0.12], min_length=4, max_length=4, description="Top bar region [x, y, w, h]")
+    bottom_bar: List[float] = Field(default=[0.00, 0.85, 1.00, 0.15], min_length=4, max_length=4, description="Bottom bar region [x, y, w, h]")
+    left_panel: List[float] = Field(default=[0.00, 0.12, 0.20, 0.73], min_length=4, max_length=4, description="Left panel region [x, y, w, h]")
+    center: List[float] = Field(default=[0.20, 0.12, 0.60, 0.73], min_length=4, max_length=4, description="Center region [x, y, w, h]")
+    right_panel: List[float] = Field(default=[0.80, 0.12, 0.20, 0.73], min_length=4, max_length=4, description="Right panel region [x, y, w, h]")
+    
+    @field_validator('top_bar', 'bottom_bar', 'left_panel', 'center', 'right_panel')
+    @classmethod
+    def validate_region(cls, v: List[float]) -> List[float]:
+        """Validate region coordinates are normalized."""
+        if len(v) != 4:
+            raise ValueError("Region must have exactly 4 values [x, y, w, h]")
+        for i, val in enumerate(v):
+            if not 0.0 <= val <= 1.0:
+                coord_name = ['x', 'y', 'w', 'h'][i]
+                raise ValueError(f"Region {coord_name} must be between 0.0 and 1.0, got {val}")
+        return v
 
 
 class ResolverConfig(BaseModel):
@@ -113,17 +147,56 @@ def load_config(config_path: str | Path) -> AppConfig:
     Raises:
         FileNotFoundError: If config file doesn't exist
         yaml.YAMLError: If YAML parsing fails
-        pydantic.ValidationError: If config validation fails
+        ValueError: If config validation fails with detailed field-level errors
     """
+    # Load .env file if present
+    _load_dotenv()
+    
     config_path = Path(config_path)
     
     if not config_path.exists():
-        raise FileNotFoundError(f"Configuration file not found: {config_path}")
+        raise FileNotFoundError(
+            f"Configuration file not found: {config_path}\n"
+            f"Please create it from the example: cp {config_path.parent}/app.yaml.example {config_path}"
+        )
     
-    with open(config_path, 'r', encoding='utf-8') as f:
-        config_data = yaml.safe_load(f)
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config_data = yaml.safe_load(f)
+    except yaml.YAMLError as e:
+        raise ValueError(f"Failed to parse YAML configuration file {config_path}: {e}")
     
-    return AppConfig(**config_data)
+    if config_data is None:
+        raise ValueError(f"Configuration file {config_path} is empty")
+    
+    try:
+        return AppConfig(**config_data)
+    except Exception as e:
+        # Provide better error messages for validation errors
+        error_msg = f"Configuration validation failed for {config_path}:\n"
+        
+        # Check if it's a Pydantic validation error
+        if hasattr(e, 'errors'):
+            for err in e.errors():
+                field_path = ' -> '.join(str(loc) for loc in err['loc'])
+                error_msg += f"  • Field '{field_path}': {err['msg']}\n"
+                if 'input' in err:
+                    error_msg += f"    Got value: {err['input']}\n"
+        else:
+            error_msg += f"  {str(e)}\n"
+        
+        raise ValueError(error_msg) from e
+
+
+def _load_dotenv() -> None:
+    """Load environment variables from .env file if present."""
+    try:
+        from dotenv import load_dotenv
+        # Look for .env in current directory and parent directories
+        load_dotenv(verbose=False)
+    except ImportError:
+        # python-dotenv not installed, skip
+        pass
 
 
 def create_default_config() -> AppConfig:

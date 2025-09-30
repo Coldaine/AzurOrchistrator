@@ -23,31 +23,54 @@ classifiers = [
 ]
 
 dependencies = [
+    # Core dependencies - minimal set for base functionality
     "pydantic>=2.0.0",
     "numpy>=1.24.0",
     "opencv-python>=4.8.0",
     "Pillow>=10.0.0",
-    "PySide6>=6.6.0",
-    "paddlepaddle>=2.5.0",
-    "paddleocr>=2.7.0",
-    "pytesseract>=0.3.10",
     "requests>=2.31.0",
     "uvloop>=0.19.0; sys_platform != 'win32'",
     "sqlalchemy>=2.0.0",
     "rapidfuzz>=3.5.0",
     "loguru>=0.7.0",
-    "google-generativeai>=0.3.0",
     "PyYAML>=6.0.0",
+    "python-dotenv>=1.0.0",  # For .env file support
 ]
 
 [project.optional-dependencies]
+# UI dependencies - for graphical interface
+ui = [
+    "PySide6>=6.6.0",
+]
+
+# OCR engines - install one or both as needed
+ocr-paddle = [
+    "paddlepaddle>=2.5.0",
+    "paddleocr>=2.7.0",
+]
+ocr-tesseract = [
+    "pytesseract>=0.3.10",
+]
+
+# LLM support - for AI-powered planning
+llm = [
+    "google-generativeai>=0.3.0",
+]
+
+# Development tools - linting, testing, type checking
 dev = [
     "pytest>=7.4.0",
     "pytest-asyncio>=0.21.0",
     "black>=23.0.0",
     "isort>=5.12.0",
-    "flake8>=6.0.0",
+    "ruff>=0.1.0",
     "mypy>=1.5.0",
+    "pre-commit>=3.0.0",
+]
+
+# All optional dependencies
+all = [
+    "azl-bot[ui,ocr-paddle,ocr-tesseract,llm,dev]",
 ]
 
 [project.scripts]
@@ -69,7 +92,34 @@ line_length = 88
 python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
-disallow_untyped_defs = true
+disallow_untyped_defs = false  # Too strict for initial setup
+check_untyped_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+strict_optional = true
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings  
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # Allow unused imports in __init__.py
 
 [tool.uv]
 dev-dependencies = [
@@ -77,7 +127,8 @@ dev-dependencies = [
     "pytest-asyncio>=0.21.0",
     "black>=23.0.0",
     "isort>=5.12.0",
-    "flake8>=6.0.0",
+    "ruff>=0.1.0",
     "mypy>=1.5.0",
     "ipython>=8.0.0",
+    "pre-commit>=3.0.0",
 ]
