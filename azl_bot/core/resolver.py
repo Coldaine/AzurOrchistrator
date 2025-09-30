@@ -1,5 +1,4 @@
-zl_bot/core/resolver.py</path>
-<content">"""UI element resolution and detection."""
+"""UI element resolution and detection."""
 
 import json
 import re

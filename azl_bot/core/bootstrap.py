@@ -1,5 +1,4 @@
-zl_bot/core/bootstrap.py</path>
-<content">    components = {
+    components = {
         "config": config,
         "device": device,
         "capture": capture,
