@@ -38,7 +38,12 @@ cv2.putText(screenshot, "Commission", (520, 690), cv2.FONT_HERSHEY_SIMPLEX, 1, (
 
 # Embed the template at a known location
 template_h, template_w = template.shape[:2]
-x, y = 900, 660
+x, y = 900, 650  # Adjusted to not go off edge
+# Make sure we don't go off the edge
+if y + template_h > screenshot.shape[0]:
+    y = screenshot.shape[0] - template_h
+if x + template_w > screenshot.shape[1]:
+    x = screenshot.shape[1] - template_w
 screenshot[y:y+template_h, x:x+template_w] = template
 
 screenshot_path = screenshots_dir / "home_screen.png"
