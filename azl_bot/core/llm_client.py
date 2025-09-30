@@ -1,5 +1,4 @@
-zl_bot/core/llm_client.py</path>
-<content">"""LLM client and schemas for plan generation."""
+"""LLM client and schemas for plan generation."""
 
 import base64
 import cv2

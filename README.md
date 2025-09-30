@@ -29,23 +29,56 @@ The bot follows a **Sense → Think → Act → Check** loop:
   - Does NOT use Genymotion-specific scripting features
 
 ## Installation
-# Install Genymotion Personal Edition
-# Download from: https://www.genymotion.com/product-desktop/download/
-# Select "Personal Use" when first running
 
-# Install system dependencies (Fedora/Nobara)
-sudo dnf install -y android-tools tesseract
-
-# For Debian/Ubuntu:
-# sudo apt-get install -y android-tools-adb tesseract-ocr
-
-# Install Python package
+### Quick Start
+```bash
+# Minimal installation (core functionality only)
 pip install -e .
 
-# Configure
-cp config/app.yaml.example config/app.yaml
-# Edit config/app.yaml with your settings
+# Full installation with all features
+pip install -e .[all]
 ```
+
+### Optional Features
+Install only what you need:
+
+```bash
+# UI support (PySide6 interface)
+pip install -e .[ui]
+
+# OCR engines
+pip install -e .[ocr-paddle]    # PaddleOCR (recommended)
+pip install -e .[ocr-tesseract]  # Tesseract alternative
+
+# LLM support for AI planning
+pip install -e .[llm]
+
+# Development tools
+pip install -e .[dev]
+```
+
+### System Dependencies
+```bash
+# Fedora/Nobara
+sudo dnf install -y android-tools tesseract
+
+# Debian/Ubuntu
+sudo apt-get install -y android-tools-adb tesseract-ocr
+```
+
+### Configuration
+```bash
+# Copy example config
+cp config/app.yaml.example config/app.yaml
+
+# Create .env file for API keys
+echo "GEMINI_API_KEY=your_key_here" > .env
+
+# Edit config as needed
+nano config/app.yaml
+```
+
+See [Configuration Examples](docs/config/EXAMPLES.md) for detailed setup guides for Waydroid, Genymotion, and MEmu.
 
 ## Usage
 
@@ -88,3 +121,59 @@ Example snippet for `config/app.yaml`:
 ## License
 
 MIT License - see LICENSE file for details.
+
+## Development
+
+### Setup Development Environment
+
+```bash
+# Install with development tools
+pip install -e .[dev]
+
+# Install pre-commit hooks
+pre-commit install
+```
+
+### Code Quality
+
+```bash
+# Run linters
+ruff check azl_bot/ tests/
+black --check azl_bot/ tests/
+isort --check azl_bot/ tests/
+
+# Auto-fix issues
+ruff check --fix azl_bot/ tests/
+black azl_bot/ tests/
+isort azl_bot/ tests/
+
+# Type checking
+mypy azl_bot/core/
+```
+
+### Testing
+
+```bash
+# Run all tests
+pytest tests/ -v
+
+# Run specific test
+python tests/basic_test.py
+python tests/test_config_validation.py
+
+# Skip emulator-dependent tests
+pytest tests/ -k "not emulator"
+```
+
+### Pre-commit Hooks
+
+The project uses pre-commit hooks for automatic code quality checks:
+
+- Trailing whitespace removal
+- YAML/TOML validation
+- Ruff linting and formatting
+- Black code formatting
+- isort import sorting
+- MyPy type checking
+
+Run manually: `pre-commit run --all-files`

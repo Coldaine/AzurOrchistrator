@@ -1,5 +1,4 @@
-zl_bot/core/screens.py</path>
-<content">"""Screen definitions and region helpers."""
+"""Screen definitions and region helpers."""
 
 from enum import Enum
 from typing import List, Tuple, Dict, Set
