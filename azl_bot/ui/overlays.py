@@ -38,12 +38,13 @@ class OverlayRenderer:
         h, w = overlay_img.shape[:2]
         
         # Draw regions if provided
-        if "regions" in overlay_data and overlay_data["regions"]:
+        if overlay_data.get("show_regions") and "regions" in overlay_data and overlay_data["regions"]:
             self._draw_regions(overlay_img, overlay_data["regions"])
         
         # Draw candidates if provided
-        if "candidates" in overlay_data and overlay_data["candidates"]:
-            self._draw_candidates(overlay_img, overlay_data["candidates"])
+        if overlay_data.get("show_candidates") and "candidates" in overlay_data and overlay_data["candidates"]:
+            selected_idx = overlay_data.get("selected_candidate_index")
+            self._draw_candidates(overlay_img, overlay_data["candidates"], selected_idx)
         
         # Draw last tap point if provided
         if "last_tap" in overlay_data and overlay_data["last_tap"]:
@@ -54,8 +55,16 @@ class OverlayRenderer:
             self._draw_boxes(overlay_img, overlay_data["boxes"])
         
         # Draw OCR results if provided
-        if "ocr_results" in overlay_data and overlay_data["ocr_results"]:
+        if overlay_data.get("show_ocr_boxes") and "ocr_results" in overlay_data and overlay_data["ocr_results"]:
             self._draw_ocr_results(overlay_img, overlay_data["ocr_results"])
+        
+        # Draw template matches if provided
+        if overlay_data.get("show_template_matches") and "template_matches" in overlay_data and overlay_data["template_matches"]:
+            self._draw_template_matches(overlay_img, overlay_data["template_matches"])
+        
+        # Draw ORB keypoints if provided
+        if overlay_data.get("show_orb_keypoints") and "orb_keypoints" in overlay_data and overlay_data["orb_keypoints"]:
+            self._draw_orb_keypoints(overlay_img, overlay_data["orb_keypoints"])
         
         return overlay_img
     
@@ -88,12 +97,13 @@ class OverlayRenderer:
             # Text
             cv2.putText(img, label, (x1 + 2, y1 - baseline - 2), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.colors["text"], 1)
     
-    def _draw_candidates(self, img: np.ndarray, candidates: List[Dict[str, Any]]) -> None:
+    def _draw_candidates(self, img: np.ndarray, candidates: List[Dict[str, Any]], selected_index: Optional[int] = None) -> None:
         """Draw candidate points on image.
         
         Args:
             img: Image to draw on (RGB format)
             candidates: List of candidate data
+            selected_index: Index of selected candidate to highlight
         """
         h, w = img.shape[:2]
         
@@ -109,21 +119,45 @@ class OverlayRenderer:
             px = int(x * w)
             py = int(y * h)
             
-            # Choose color based on confidence
-            if conf >= 0.8:
+            # Check if this is the selected candidate
+            is_selected = (selected_index is not None and i == selected_index)
+            
+            # Choose color based on confidence and selection
+            if is_selected:
+                color = (255, 128, 0)  # Orange for selected
+                radius = 12
+                thickness = 3
+            elif conf >= 0.8:
                 color = self.colors["success"]
+                radius = 8
+                thickness = 2
             elif conf >= 0.6:
                 color = self.colors["candidate"]
+                radius = 8
+                thickness = 2
             else:
                 color = self.colors["failure"]
+                radius = 8
+                thickness = 2
             
             # Draw circle
-            cv2.circle(img, (px, py), 8, color, 2)
+            cv2.circle(img, (px, py), radius, color, thickness)
             cv2.circle(img, (px, py), 2, self.colors["text"], -1)  # Center dot
             
             # Draw label
             label = f"{method}:{conf:.2f}"
+            if is_selected:
+                label = f"[{i}] {label}"
             cv2.putText(img, label, (px + 12, py - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
+            
+            # Draw bounding box for selected candidate
+            if is_selected and "bbox" in candidate:
+                bx, by, bw, bh = candidate["bbox"]
+                x1 = int(bx * w)
+                y1 = int(by * h)
+                x2 = int((bx + bw) * w)
+                y2 = int((by + bh) * h)
+                cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
     
     def _draw_tap_point(self, img: np.ndarray, tap_data: Dict[str, Any]) -> None:
         """Draw last tap point on image.
@@ -244,6 +278,65 @@ class OverlayRenderer:
                 
                 # Text
                 cv2.putText(img, text, (x1 + 2, y1 - baseline - 2), cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, thickness)
+    
+    def _draw_template_matches(self, img: np.ndarray, matches: List[Dict[str, Any]]) -> None:
+        """Draw template match locations on image.
+        
+        Args:
+            img: Image to draw on (RGB format)
+            matches: List of template match results
+        """
+        h, w = img.shape[:2]
+        
+        for match in matches:
+            if "point" not in match or "confidence" not in match:
+                continue
+            
+            x, y = match["point"]
+            conf = match["confidence"]
+            template_name = match.get("template", "unknown")
+            
+            # Convert to pixels
+            px = int(x * w)
+            py = int(y * h)
+            
+            # Color based on confidence
+            if conf >= 0.8:
+                color = self.colors["success"]
+            else:
+                color = self.colors["candidate"]
+            
+            # Draw square marker
+            size = 10
+            cv2.rectangle(img, (px - size, py - size), (px + size, py + size), color, 2)
+            cv2.circle(img, (px, py), 2, self.colors["text"], -1)  # Center dot
+            
+            # Draw label
+            label = f"T:{template_name}:{conf:.2f}"
+            cv2.putText(img, label, (px + 12, py - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
+    
+    def _draw_orb_keypoints(self, img: np.ndarray, keypoints: List[Dict[str, Any]]) -> None:
+        """Draw ORB keypoints on image.
+        
+        Args:
+            img: Image to draw on (RGB format)
+            keypoints: List of ORB keypoint locations
+        """
+        h, w = img.shape[:2]
+        
+        for kp in keypoints:
+            if "point" not in kp:
+                continue
+            
+            x, y = kp["point"]
+            
+            # Convert to pixels
+            px = int(x * w)
+            py = int(y * h)
+            
+            # Draw small circle for keypoint
+            cv2.circle(img, (px, py), 3, self.colors["box"], 1)
+            cv2.circle(img, (px, py), 1, self.colors["text"], -1)
 
 
 def create_overlay_data(regions: Optional[Dict] = None, candidates: Optional[List] = None,

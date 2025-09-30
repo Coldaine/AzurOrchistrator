@@ -29,6 +29,16 @@ class UIState:
         self.last_ocr_results = []
         self.last_candidates = []
         
+        # Overlay toggles
+        self.show_ocr_boxes = False
+        self.show_template_matches = False
+        self.show_orb_keypoints = False
+        self.show_regions = True
+        self.show_candidates = True
+        
+        # Selected candidate for highlighting
+        self.selected_candidate_index: Optional[int] = None
+        
     def record_tap(self, x: float, y: float, method: str = "manual", confidence: float = 1.0) -> None:
         """Record a tap point.
         
