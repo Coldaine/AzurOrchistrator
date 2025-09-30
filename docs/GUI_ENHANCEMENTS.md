@@ -3,6 +3,9 @@
 ## Overview
 The Azur Lane Bot GUI has been enhanced with task controls, candidate inspection, and live overlays to aid operation and debugging.
 
+![GUI Layout](images/gui_layout_mockup.png)
+*Complete GUI layout with task sidebar, live view, and candidate inspector*
+
 ## Features
 
 ### 1. Task Control Sidebar
