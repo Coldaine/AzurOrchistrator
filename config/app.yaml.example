@@ -68,3 +68,14 @@ logging:
 ui:
   show_llm_json: false
   zoom_overlay: true
+  hotkeys:
+    start_stop: "Space"
+    toggle_overlays: "O"
+    save_screenshot: "S"
+  overlays:
+    show_regions: true
+    show_candidates: true
+    show_ocr_boxes: false
+    show_template_matches: false
+    show_orb_keypoints: false
+  screenshot_dir: "screenshots"

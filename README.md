@@ -87,6 +87,20 @@ See [Configuration Examples](docs/config/EXAMPLES.md) for detailed setup guides 
 ./scripts/run_gui.sh
 ```
 
+The GUI provides:
+- **Task Control Sidebar**: Select and run tasks from the registry
+- **Live View**: Real-time frame capture with overlay visualizations
+- **Candidate Inspector**: View and inspect resolver detection candidates
+- **Keyboard Shortcuts**:
+  - `Space`: Start/Stop selected task
+  - `O`: Toggle overlay display
+  - `S`: Save screenshot
+- **Overlay Options**: Toggle OCR boxes, template matches, ORB keypoints, regions, and candidates
+
+See [GUI Enhancements Documentation](docs/GUI_ENHANCEMENTS.md) for detailed usage instructions.
+
+![GUI Overlay Features](docs/images/overlay_showcase.png)
+
 ### CLI Mode
 ```bash
 ./scripts/run_task.sh currencies
