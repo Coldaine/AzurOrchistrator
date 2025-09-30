@@ -41,6 +41,14 @@ class ResolverThresholds(BaseModel):
     ncc_gray: float = 0.70
     orb_inliers: int = 12
     combo_accept: float = 0.65
+    # Weights for combining method confidences
+    weights: Dict[str, float] = Field(default_factory=lambda: {
+        "ocr": 1.0,
+        "template": 1.0,
+        "orb": 0.9,
+        "region_hint": 0.5,
+        "llm_arbitration": 1.2
+    })
 
 
 class ResolverRegions(BaseModel):
@@ -59,9 +67,28 @@ class ResolverConfig(BaseModel):
     regions: ResolverRegions = Field(default_factory=ResolverRegions)
 
 
+class DataCaptureConfig(BaseModel):
+    """Dataset capture configuration."""
+    enabled: bool = False
+    sample_rate_hz: float = 0.5
+    max_dim: int = 1280
+    format: Literal["jpg", "png"] = "jpg"
+    jpeg_quality: int = 85
+    dedupe: Dict[str, Any] = Field(default_factory=lambda: {
+        "method": "dhash",
+        "hamming_threshold": 3
+    })
+    retention: Dict[str, int] = Field(default_factory=lambda: {
+        "max_files": 2000,
+        "max_days": 60
+    })
+    metadata: bool = True
+
+
 class DataConfig(BaseModel):
     """Data storage configuration."""
     base_dir: str = "~/.azlbot"
+    capture_dataset: DataCaptureConfig = Field(default_factory=DataCaptureConfig)
 
 
 class LoggingConfig(BaseModel):

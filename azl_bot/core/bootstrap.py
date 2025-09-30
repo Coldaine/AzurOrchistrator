@@ -10,6 +10,7 @@ from .actuator import Actuator
 from .capture import Capture
 from .configs import AppConfig, load_config, create_default_config
 from .datastore import DataStore
+from .dataset_capture import DatasetCapture
 from .device import Device
 from .llm_client import LLMClient
 from .ocr import OCRClient
@@ -46,8 +47,17 @@ def bootstrap_from_config(config_path: Optional[str] = None) -> Dict[str, Any]:
         package_name=config.emulator.package_name
     )
     
+    # Initialize dataset capture
+    dataset_capture = None
+    if config.data.capture_dataset.enabled:
+        dataset_capture = DatasetCapture(
+            config=config.data.capture_dataset.model_dump(),
+            base_dir=config.data_dir
+        )
+        logger.info("Dataset capture enabled")
+    
     # Initialize capture
-    capture = Capture(device)
+    capture = Capture(device, dataset_capture=dataset_capture)
     
     # Initialize OCR
     ocr = OCRClient(
@@ -118,7 +128,8 @@ def bootstrap_from_config(config_path: Optional[str] = None) -> Dict[str, Any]:
         "planner": planner,
         "tasks": tasks,
         "screen_state_machine": screen_state_machine,
-        "hasher": capture.hasher
+        "hasher": capture.hasher,
+        "dataset_capture": dataset_capture
     }
     
     return components
