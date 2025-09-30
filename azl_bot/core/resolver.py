@@ -1,5 +1,4 @@
-zl_bot/core/resolver.py</path>
-<content">"""UI element resolution and detection."""
+"""UI element resolution and detection."""
 
 import json
 import re
@@ -377,21 +376,21 @@ class Resolver:
         """Build prompt for LLM arbitration."""
         target_value = target.value
         target_kind = target.kind
-        prompt = f"I need help resolving a disagreement between different computer vision methods trying to locate: \"{target_value}\"\n\n"
-        prompt += "The methods found these locations (normalized coordinates 0.0-1.0):\n"
+        prompt = f'I need help resolving a disagreement between different computer vision methods trying to locate: "{target_value}"\n\n'
+        prompt += 'The methods found these locations (normalized coordinates 0.0-1.0):\n'
 
         for i, candidate in enumerate(candidates):
             x, y = candidate.point
-            prompt += f"{i+1}. {candidate.method}: ({x:.3f}, {y:.3f}) confidence: {candidate.confidence:.2f}\n"
+            prompt += f'{i+1}. {candidate.method}: ({x:.3f}, {y:.3f}) confidence: {candidate.confidence:.2f}\n'
 
-        prompt += f"\nPlease analyze the screenshot and tell me the most accurate location for \"{target_value}\".\n\n"
-        prompt += "Consider:\n"
-        prompt += "- Which location makes the most visual sense\n"
-        prompt += "- The context and layout of the UI elements\n"
-        prompt += f"- The type of element we are looking for ({target_kind})\n\n"
-        prompt += "Return your answer as normalized coordinates in the format: (x.xxx, y.yyy)\n"
-        prompt += "Where x and y are between 0.0 and 1.0, with (0,0) being top-left and (1,1) being bottom-right.\n\n"
-        prompt += "Your response should contain ONLY the coordinate pair, nothing else."
+        prompt += f'\nPlease analyze the screenshot and tell me the most accurate location for "{target_value}".\n\n'
+        prompt += 'Consider:\n'
+        prompt += '- Which location makes the most visual sense\n'
+        prompt += '- The context and layout of the UI elements\n'
+        prompt += f'- The type of element we are looking for ({target_kind})\n\n'
+        prompt += 'Return your answer as normalized coordinates in the format: (x.xxx, y.yyy)\n'
+        prompt += 'Where x and y are between 0.0 and 1.0, with (0,0) being top-left and (1,1) being bottom-right.\n\n'
+        prompt += 'Your response should contain ONLY the coordinate pair, nothing else.'
 
         return prompt
     
