@@ -1,5 +1,3 @@
-ests/test_hashing.py</path>
-<content">    def test_is_stable(self):
         """Test stability detection."""
         img = np.random.randint(0, 256, (8, 8), dtype=np.uint8)
 

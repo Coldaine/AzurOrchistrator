@@ -1,5 +1,3 @@
-zl_bot/core/actuator.py</path>
-<content">"""Actuator for performing taps and swipes on Android device."""
 
 import time
 from typing import Literal, Optional

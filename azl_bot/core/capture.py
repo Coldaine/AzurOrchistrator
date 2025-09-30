@@ -1,5 +1,3 @@
-zl_bot/core/capture.py</path>
-<content">"""Screen capture and preprocessing."""
 
 import time
 from dataclasses import dataclass
