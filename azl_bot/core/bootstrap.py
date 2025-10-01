@@ -1,7 +1,7 @@
 """Bootstrap and component initialization.
 
 This module provides bootstrap hooks for initializing all components.
-Combines minimal approach with dataset capture and full initialization.
+Combines dataset capture support with task registry integration.
 """
 
 import os
@@ -14,13 +14,18 @@ from .actuator import Actuator
 from .capture import Capture
 from .configs import AppConfig, load_config, create_default_config
 from .datastore import DataStore
-from .dataset_capture import DatasetCapture
 from .device import Device
 from .llm_client import LLMClient
 from .ocr import OCRClient
 from .resolver import Resolver
 
-# Optional imports for full bootstrap
+# Optional imports
+try:
+    from .dataset_capture import DatasetCapture
+    HAS_DATASET = True
+except ImportError:
+    HAS_DATASET = False
+
 try:
     from .planner import Planner
     HAS_PLANNER = True
@@ -61,10 +66,27 @@ def bootstrap_from_config_object(config: AppConfig) -> Dict[str, Any]:
     """Wire core components based on an AppConfig object.
     
     This is the main initialization function that creates all components.
+    
+    Returns:
+        Dictionary of initialized components with keys:
+        - config: AppConfig
+        - device: Device
+        - capture: Capture
+        - ocr: OCRClient
+        - llm: LLMClient (None if API key not available)
+        - resolver: Resolver
+        - datastore: DataStore
+        - actuator: Actuator
+        - planner: Planner (if available)
+        - tasks: Dict of task instances
+        - screen_state_machine: ScreenStateMachine (if available)
+        - hasher: ImageHasher (from capture)
+        - dataset_capture: DatasetCapture (if enabled)
     """
-    logger.info("Bootstrapping components from configuration")
+    logger.info("Bootstrapping bot components...")
     
     # Initialize device
+    logger.info(f"Connecting to device: {config.emulator.adb_serial}")
     device = Device(
         adb_serial=config.emulator.adb_serial,
         package_name=config.emulator.package_name
@@ -72,7 +94,7 @@ def bootstrap_from_config_object(config: AppConfig) -> Dict[str, Any]:
     
     # Initialize dataset capture if enabled
     dataset_capture = None
-    if config.data.capture_dataset.enabled:
+    if HAS_DATASET and config.data.capture_dataset.enabled:
         dataset_capture = DatasetCapture(
             config=config.data.capture_dataset.model_dump(),
             base_dir=config.data_dir
@@ -80,19 +102,24 @@ def bootstrap_from_config_object(config: AppConfig) -> Dict[str, Any]:
         logger.info("Dataset capture enabled")
     
     # Initialize capture
+    logger.info("Initializing capture system...")
     capture = Capture(device, dataset_capture=dataset_capture)
     
     # Initialize OCR
+    logger.info(f"Initializing OCR ({config.resolver.ocr})...")
     ocr = OCRClient(config.resolver)
     
-    # Initialize LLM
+    # Initialize LLM (optional - may not have API key)
     llm = None
     try:
+        logger.info(f"Initializing LLM ({config.llm.provider})...")
         llm = LLMClient(config.llm)
     except ValueError as e:
         logger.warning(f"LLM not available: {e}")
+        logger.warning("Planner will work in limited mode without LLM")
     
     # Initialize resolver
+    logger.info("Initializing resolver...")
     templates_dir = str(Path("./config/templates").absolute())
     resolver = Resolver(
         config=config.resolver.model_dump(),
@@ -102,6 +129,7 @@ def bootstrap_from_config_object(config: AppConfig) -> Dict[str, Any]:
     )
     
     # Initialize datastore
+    logger.info("Initializing datastore...")
     datastore = DataStore(config.data_dir / "azl.sqlite3")
     
     # Initialize actuator
@@ -124,17 +152,19 @@ def bootstrap_from_config_object(config: AppConfig) -> Dict[str, Any]:
     }
     
     # Initialize planner if available
-    if HAS_PLANNER and llm is not None:
+    if HAS_PLANNER:
         try:
+            logger.info("Initializing planner...")
             planner = Planner(
+                device=device,
+                capture=capture,
                 resolver=resolver,
-                actuator=actuator,
+                ocr=ocr,
+                llm=llm if llm else None,  # type: ignore
                 datastore=datastore,
-                llm=llm,
-                ocr=ocr
+                actuator=actuator
             )
             components["planner"] = planner
-            logger.info("Planner initialized")
         except Exception as e:
             logger.warning(f"Could not initialize planner: {e}")
     
@@ -146,19 +176,34 @@ def bootstrap_from_config_object(config: AppConfig) -> Dict[str, Any]:
         except Exception as e:
             logger.warning(f"Could not initialize screen state machine: {e}")
     
-    # Initialize tasks if available
+    # Initialize tasks using task registry
     try:
-        from azl_bot.tasks import currencies, pickups, commissions
-        tasks = {
-            "currencies": currencies,
-            "pickups": pickups,
-            "commissions": commissions
-        }
+        from ..tasks.registry import get_all_tasks
+        tasks = get_all_tasks()
         components["tasks"] = tasks
-    except ImportError as e:
-        logger.debug(f"Tasks not loaded: {e}")
+        logger.info(f"Loaded {len(tasks)} tasks from registry")
+    except ImportError:
+        # Fallback to manual task loading
+        try:
+            from ..tasks import currencies, pickups, commissions
+            tasks = {
+                "currencies": currencies,
+                "pickups": pickups,
+                "commissions": commissions
+            }
+            # Try to add daily task if available
+            try:
+                from ..tasks import daily
+                tasks["daily_maintenance"] = daily
+            except ImportError:
+                pass
+            components["tasks"] = tasks
+            logger.info(f"Loaded {len(tasks)} tasks manually")
+        except ImportError as e:
+            logger.debug(f"Tasks not loaded: {e}")
     
     logger.info(f"Bootstrapped {len(components)} components")
+    logger.info("Bootstrap complete!")
     return components
 
 
