@@ -191,17 +191,19 @@ PR #2 introduced an unpinned `imagehash` dependency that wasn't in `pyproject.to
 **Technical Reasons:**
 - **Zero External Dependencies:** OpenCV and NumPy are already required dependencies for core vision processing (screen capture, template matching, OCR preprocessing). Adding imagehash would pull in PIL/Pillow, which we don't use elsewhere.
   
-- **Performance:** Our implementation is ~40% faster than imagehash for our use case:
+- **Performance:** Our implementation *should theoretically* be faster than imagehash due to:
   ```python
-  # Our dHash: ~2ms per frame
-  # imagehash pHash: ~5ms per frame (PIL conversion overhead)
+  # Our dHash: Direct OpenCV operations, no format conversion
+  # imagehash pHash: Requires BGR→RGB conversion + PIL operations
   ```
+  ⚠️ **Note:** No actual benchmarking performed. Performance claims are theoretical based on avoiding PIL conversion overhead.
 
 - **Control & Customization:** We added `extra_intensity_bits` for finer discrimination and stability tracking that imagehash doesn't offer:
   ```python
   # Our enhancement: 64-bit hash + 8 extra intensity bits = 72 bits
-  # Reduces false positives during loading screens by ~30%
+  # Potential to reduce false positives during loading screens
   ```
+  ⚠️ **Note:** No real game screenshots available for testing. False positive reduction is untested.
 
 - **Reduced Attack Surface:** Fewer dependencies = fewer security vulnerabilities. PIL has had several CVEs in recent years (CVE-2023-44271, CVE-2023-4863).
 
@@ -229,9 +231,10 @@ hash_val = self._dhash_int(frame)  # Direct on CV2 frame, simpler diff hash
 ```
 
 **Results:**
-- Hashing tests pass with same accuracy as imagehash
-- Frame deduplication works reliably (hamming distance ≤3 for duplicates)
-- Stability detection correctly identifies loading screens vs. transitions
+- ✅ Unit tests pass (synthetic numpy arrays)
+- ⚠️ **Untested with real game frames** - no actual screenshots in fixtures
+- ⚠️ **No benchmark comparison** - imagehash performance claims are theoretical
+- ⚠️ **False positive reduction unverified** - needs real game data to validate
 
 **Future-Proofing:**
 If we ever need more sophisticated hashing (aHash, pHash, wHash), we can:
@@ -472,19 +475,23 @@ for tmpl, scale in pyramid:
 
 ## Performance Impact
 
-### Positive Changes
-1. **Frame Hashing:** 2ms/frame (was 5ms with imagehash)
-2. **Dataset Capture:** Async, doesn't block main loop
-3. **Resolver Confidence:** Multi-method reduces false positives by ~25%
+### ⚠️ **Critical Note: No Benchmarking Performed**
 
-### Neutral Changes
-1. **StateLoop:** Adds ~100ms overhead per action (verification step)
-2. **Task Registry:** Negligible (<1ms startup)
+**All performance claims below are theoretical or estimated. No actual measurements were taken due to lack of real game screenshots and emulator testing.**
 
-### Areas to Monitor
-1. **Template Pyramid:** Grows memory with more templates (~5MB per 50 templates)
-2. **ORB Features:** CPU-intensive (~50ms per resolution), should cache results
-3. **Dataset Storage:** Can grow to GBs if retention not configured
+### Theoretical/Expected Changes
+1. **Frame Hashing:** Should be faster than imagehash (avoids PIL conversion) - **UNVERIFIED**
+2. **Dataset Capture:** Async design shouldn't block main loop - **UNTESTED**
+3. **Resolver Confidence:** Multi-method approach should reduce false positives - **NO BASELINE DATA**
+
+### Expected Overhead (Estimates)
+1. **StateLoop:** Likely adds ~100ms per action (verification step) - **UNMEASURED**
+2. **Task Registry:** Should be negligible - **NO PROFILING**
+
+### Areas to Monitor (When Real Testing Begins)
+1. **Template Pyramid:** May grow memory with more templates
+2. **ORB Features:** Likely CPU-intensive, may need caching
+3. **Dataset Storage:** Can grow large without retention policies
 
 ---
 
@@ -498,19 +505,24 @@ for tmpl, scale in pyramid:
 5. ⬜ Squash redundant fix commits (optional)
 
 ### Short Term (Next Sprint)
-1. Update CI workflow to use UV
-2. Add pre-commit validation to CI
-3. Fix SQLAlchemy deprecation warning
-4. Convert test return values to assertions
-5. Add task control UI panel
-6. Document dataset capture configuration
+1. **🚨 CRITICAL: Capture real game screenshots for testing**
+2. **🚨 CRITICAL: Benchmark dHash vs imagehash with actual data**
+3. Update CI workflow to use UV
+4. Add pre-commit validation to CI
+5. Fix SQLAlchemy deprecation warning
+6. Convert test return values to assertions
+7. Add task control UI panel
+8. Document dataset capture configuration
 
 ### Medium Term (Next Quarter)
-1. Add integration tests with emulator in CI
-2. Implement ORB feature caching
-3. Add coverage reporting to CI
-4. Create performance benchmarking suite
-5. Standardize component initialization signatures
+1. **Create comprehensive test fixture library** (real screenshots at multiple resolutions)
+2. **Validate all resolver methods** (OCR, template matching, ORB) with real data
+3. **Profile actual performance** under realistic game conditions
+4. Add integration tests with emulator in CI
+5. Implement ORB feature caching (if profiling shows it's needed)
+6. Add coverage reporting to CI
+7. Create performance benchmarking suite
+8. Standardize component initialization signatures
 
 ### Long Term (Roadmap)
 1. Migrate to SQLAlchemy 2.0+ ORM API
@@ -546,9 +558,15 @@ All 5 pull requests have been successfully merged with comprehensive conflict re
 - ✅ Unified bootstrap supporting all new features
 - ✅ Comprehensive type annotations
 - ✅ Robust error handling throughout
-- ✅ 51% increase in test coverage
+- ✅ 51% increase in test coverage (unit tests with synthetic data)
 
-**Ready for Production:** Yes, pending review of this merge report.
+**Testing Limitations:**
+- ⚠️ **No real game screenshots** - all tests use synthetic numpy arrays
+- ⚠️ **No performance benchmarks** - all claims are theoretical
+- ⚠️ **No emulator integration** - untested in real game environment
+- ⚠️ **No resolver validation** - OCR/template/ORB methods unverified with actual UI
+
+**Ready for Production:** **NO** - Requires real game testing before production use.
 
 **Recommended Next Step:** Push to origin/main and notify team of infrastructure changes (CI, pre-commit hooks, dataset capture).
 
