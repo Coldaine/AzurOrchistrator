@@ -47,13 +47,13 @@ class FrameHasher:
     Attributes:
         hash_size: Size of one dimension of the dHash (nbits = hash_size*hash_size)
         similarity_threshold: If similarity < threshold, considered changed.
+        extra_intensity_bits: Extra MSBs from mean intensity appended to reduce
+            collisions on uniform frames (0-8).
     """
 
     def __init__(self, hash_size: int = 16, similarity_threshold: float = 0.95, extra_intensity_bits: int = 8):
         self.hash_size = int(hash_size)
         self.similarity_threshold = float(similarity_threshold)
-        # Append a small number of bits derived from mean intensity to avoid
-        # collisions on uniform images (e.g., all black vs all white).
         self.extra_intensity_bits = int(max(0, min(8, extra_intensity_bits)))
         self._nbits = self.hash_size * self.hash_size + self.extra_intensity_bits
         self._last_hash: Optional[int] = None
@@ -68,9 +68,11 @@ class FrameHasher:
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         else:
             gray = image
+
         h = _dhash_int(gray, self.hash_size)
         if self.extra_intensity_bits:
-            mean_val = int(np.mean(gray))  # 0..255
+            # Use float mean to satisfy type checkers and convert to int range 0..255
+            mean_val = int(float(np.mean(gray.astype(np.float32, copy=False))))  # 0..255
             if self.extra_intensity_bits < 8:
                 # Keep the most significant bits to preserve ordering
                 mean_val = mean_val >> (8 - self.extra_intensity_bits)

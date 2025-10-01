@@ -111,6 +111,17 @@ class UIConfig(BaseModel):
     zoom_overlay: bool = True
 
 
+class LoopConfig(BaseModel):
+    """Loop execution configuration."""
+    target_fps: float = 2.0
+    stability_frames: int = 3
+    stability_timeout_sec: float = 10.0
+    max_retries: int = 3
+    retry_backoff_base: float = 1.5
+    recovery_enabled: bool = True
+    hamming_threshold: float = 0.05
+
+
 class AppConfig(BaseModel):
     """Main application configuration."""
     emulator: EmulatorConfig = Field(default_factory=EmulatorConfig)
@@ -120,6 +131,7 @@ class AppConfig(BaseModel):
     data: DataConfig = Field(default_factory=DataConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     ui: UIConfig = Field(default_factory=UIConfig)
+    loop: LoopConfig = Field(default_factory=LoopConfig)
     
     @property
     def data_dir(self) -> Path:

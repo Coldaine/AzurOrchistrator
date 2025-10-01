@@ -66,7 +66,8 @@ class Resolver:
         elif target.kind == "point":
             # Direct point specification
             if target.point:
-                candidates.append(Candidate(target.point, target.confidence, "direct"))
+                pt = (float(target.point[0]), float(target.point[1]))
+                candidates.append(Candidate(pt, float(target.confidence), "direct"))
         
         if not candidates:
             return None
@@ -91,13 +92,24 @@ class Resolver:
         ocr_results = self.ocr.extract_text(frame)
         
         for result in ocr_results:
-            if target.value.lower() in result['text'].lower():
+            text = result.get('text') if isinstance(result, dict) else None
+            if not (isinstance(target.value, str) and isinstance(text, str)):
+                continue
+            if target.value.lower() in text.lower():
                 # Convert OCR bbox to normalized coordinates
-                bbox = result['bbox']  # [x1, y1, x2, y2] in pixels
-                center_x = (bbox[0] + bbox[2]) / 2 / frame.full_w
-                center_y = (bbox[1] + bbox[3]) / 2 / frame.full_h
+                bbox = result.get('bbox') or result.get('box_norm')
+                if not bbox or len(bbox) < 4:
+                    continue
+                # If bbox is [x1,y1,x2,y2] in px
+                if max(bbox) > 1.0:
+                    center_x = (bbox[0] + bbox[2]) / 2 / frame.full_w
+                    center_y = (bbox[1] + bbox[3]) / 2 / frame.full_h
+                else:
+                    # Assume normalized [x,y,w,h]
+                    center_x = float(bbox[0]) + float(bbox[2]) / 2.0
+                    center_y = float(bbox[1]) + float(bbox[3]) / 2.0
                 
-                confidence = result.get('confidence', 0.7)
+                confidence = float(result.get('confidence', result.get('conf', 0.7)))
                 candidates.append(Candidate((center_x, center_y), confidence, "ocr"))
         
         return candidates
