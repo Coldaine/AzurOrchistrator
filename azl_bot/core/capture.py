@@ -12,6 +12,7 @@ from loguru import logger
 
 from .device import Device
 from .hashing import FrameHasher
+from .dataset_capture import DatasetCapture
 
 
 @dataclass
@@ -65,14 +66,16 @@ class Frame:
 class Capture:
     """Screen capture and preprocessing."""
 
-    def __init__(self, device: Device) -> None:
+    def __init__(self, device: Device, dataset_capture: Optional[DatasetCapture] = None) -> None:
         """Initialize capture with device.
 
         Args:
             device: Device instance for screen capture
+            dataset_capture: Optional dataset capture instance
         """
         self.device = device
         self.hasher = FrameHasher()
+        self.dataset_capture = dataset_capture
 
         # Frame rate management
         self.last_active_rect: Optional[tuple[int, int, int, int]] = None
@@ -84,7 +87,7 @@ class Capture:
         )
         self._last_grab_time = 0.0
 
-    def grab(self, force: bool = False) -> Optional[Frame]:
+    def grab(self, force: bool = False, context: Optional[dict] = None) -> Optional[Frame]:
         """Grab frame with dynamic rate and deduplication."""
         # Check if enough time passed
         delay = self.frame_rate_manager.get_current_delay()
@@ -96,6 +99,16 @@ class Capture:
         frame = self._grab_internal()
         if frame and self.hasher.has_changed(frame.image_bgr):
             self._last_grab_time = time.time()
+            
+            # Capture to dataset if enabled
+            if self.dataset_capture:
+                self.dataset_capture.capture(
+                    frame.image_bgr, 
+                    frame.active_rect,
+                    (frame.full_w, frame.full_h),
+                    context=context
+                )
+            
             return frame
         
         return None
