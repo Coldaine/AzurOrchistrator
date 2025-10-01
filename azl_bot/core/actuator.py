@@ -1,7 +1,7 @@
 """Actuator for performing taps and swipes on Android device."""
 
 import time
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from loguru import logger
 
@@ -20,7 +20,7 @@ class Actuator:
         """
         self.device = device
         self.backend = backend
-        self.capture = None  # Will be set by bootstrap
+        self.capture: Optional[Any] = None  # Will be set by bootstrap
         self._last_tap_time = 0.0
         self._last_tap_x = 0.0
         self._last_tap_y = 0.0

@@ -55,14 +55,14 @@ class LLMClient:
     def _init_client(self) -> None:
         """Initialize the Gemini client."""
         try:
-            import google.generativeai as genai
+            import google.generativeai as genai  # type: ignore
 
             api_key = os.getenv("GEMINI_API_KEY")
             if not api_key:
                 raise ValueError("GEMINI_API_KEY environment variable not set")
 
-            genai.configure(api_key=api_key)
-            self._client = genai.GenerativeModel('gemini-1.5-flash-latest')
+            genai.configure(api_key=api_key)  # type: ignore
+            self._client = genai.GenerativeModel('gemini-1.5-flash-latest')  # type: ignore
 
             logger.info("Gemini LLM client initialized successfully")
 
@@ -108,6 +108,9 @@ class LLMClient:
                 else:
                     logger.error("All LLM request attempts failed, returning fallback plan")
                     return self._fallback_plan("LLM service unavailable")
+        
+        # Fallback if loop exits without return (should not happen)
+        return self._fallback_plan("Unexpected execution path")
 
     def _build_prompt(self, frame: Frame, goal: Dict[str, Any], context: Dict[str, Any]) -> str:
         """Build comprehensive prompt for LLM.
@@ -223,11 +226,10 @@ Analyze the attached screenshot and provide your JSON response."""
                     h = getattr(frame, "full_h", 100) or 100
                     image = PIL.Image.new("RGB", (int(w), int(h)), color="black")
 
-            # Call model with positional content args to satisfy tests
-            response = self._client.generate_content(
-                prompt,
-                image,
-                generation_config={
+            # Call model with contents parameter to satisfy type checker
+            response = self._client.generate_content(  # type: ignore[arg-type]
+                contents=[prompt, image],
+                generation_config={  # type: ignore[arg-type]
                     "max_output_tokens": self.config.max_tokens,
                     "temperature": self.config.temperature,
                     "top_p": 0.8,
@@ -356,12 +358,12 @@ Analyze the attached screenshot and provide your JSON response."""
             image = PIL.Image.open(io.BytesIO(frame.png_bytes))
 
             # Create content with both text and image
-            response = self._client.generate_content(
+            response = self._client.generate_content(  # type: ignore[arg-type]
                 contents=[
                     prompt,
                     image
                 ],
-                generation_config={
+                generation_config={  # type: ignore[arg-type]
                     "max_output_tokens": 1024,
                     "temperature": 0.2,
                     "top_p": 0.8,
