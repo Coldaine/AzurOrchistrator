@@ -183,13 +183,13 @@ class Resolver:
                 edges = cv2.Canny(gray, 50, 150)
                 edge_pyramid.append((edges, scale))
             
-            self._template_cache[template_name] = pyramid
-            self._template_edge_cache[template_name] = edge_pyramid
+            self._template_cache[template_name] = pyramid  # type: ignore[index]
+            self._template_edge_cache[template_name] = edge_pyramid  # type: ignore[index]
             logger.debug(f"Cached template pyramid for {template_name}")
         
         # Get cached pyramids
-        pyramid = self._template_cache[template_name]
-        edge_pyramid = self._template_edge_cache[template_name]
+        pyramid = self._template_cache[template_name]  # type: ignore[index]
+        edge_pyramid = self._template_edge_cache[template_name]  # type: ignore[index]
         
         # Prepare frame
         frame_gray = cv2.cvtColor(frame.image_bgr, cv2.COLOR_BGR2GRAY)
@@ -221,6 +221,7 @@ class Resolver:
         # If edge NCC is above threshold, add candidate
         if best_ncc_score >= ncc_edge_thresh and best_ncc_location:
             # Get template size at best scale
+            tmpl_h, tmpl_w = 0, 0
             for tmpl, scale in pyramid:
                 if scale == best_scale:
                     tmpl_h, tmpl_w = tmpl.shape[:2]
@@ -264,7 +265,7 @@ class Resolver:
         orb_inliers_thresh = thresholds.get("orb_inliers", 12)
         
         # Initialize ORB
-        orb = cv2.ORB_create(nfeatures=1500)
+        orb = cv2.ORB_create(nfeatures=1500)  # type: ignore[attr-defined]
         
         # Convert to grayscale
         template_gray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
@@ -296,8 +297,8 @@ class Resolver:
             return None
         
         # Get matched keypoint locations
-        src_pts = np.float32([kp1[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
-        dst_pts = np.float32([kp2[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+        src_pts = np.float32([kp1[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)  # type: ignore[arg-type]
+        dst_pts = np.float32([kp2[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)  # type: ignore[arg-type]
         
         # Find homography
         if len(good_matches) >= 4:
@@ -310,7 +311,7 @@ class Resolver:
                 if inliers >= orb_inliers_thresh:
                     # Get center of template in frame
                     h, w = template.shape[:2]
-                    template_center = np.float32([[w/2, h/2, 1]]).T
+                    template_center = np.float32([[w/2, h/2, 1]]).T  # type: ignore[arg-type]
                     frame_center = H @ template_center
                     
                     if frame_center[2, 0] != 0:

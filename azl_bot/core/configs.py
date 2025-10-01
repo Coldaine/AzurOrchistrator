@@ -216,7 +216,7 @@ def load_config(config_path: str | Path) -> AppConfig:
         
         # Check if it's a Pydantic validation error
         if hasattr(e, 'errors'):
-            for err in e.errors():
+            for err in e.errors():  # type: ignore[attr-defined]
                 field_path = ' -> '.join(str(loc) for loc in err['loc'])
                 error_msg += f"  • Field '{field_path}': {err['msg']}\n"
                 if 'input' in err:

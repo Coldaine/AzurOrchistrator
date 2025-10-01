@@ -87,15 +87,12 @@ def bootstrap_from_config_object(config: AppConfig) -> Dict[str, Any]:
     
     # Initialize device
     logger.info(f"Connecting to device: {config.emulator.adb_serial}")
-    device = Device(
-        adb_serial=config.emulator.adb_serial,
-        package_name=config.emulator.package_name
-    )
+    device = Device(serial=config.emulator.adb_serial)
     
     # Initialize dataset capture if enabled
     dataset_capture = None
     if HAS_DATASET and config.data.capture_dataset.enabled:
-        dataset_capture = DatasetCapture(
+        dataset_capture = DatasetCapture(  # type: ignore[possibly-unbound]
             config=config.data.capture_dataset.model_dump(),
             base_dir=config.data_dir
         )
@@ -155,12 +152,12 @@ def bootstrap_from_config_object(config: AppConfig) -> Dict[str, Any]:
     if HAS_PLANNER:
         try:
             logger.info("Initializing planner...")
-            planner = Planner(
+            planner = Planner(  # type: ignore[possibly-unbound]
                 device=device,
                 capture=capture,
                 resolver=resolver,
                 ocr=ocr,
-                llm=llm if llm else None,  # type: ignore
+                llm=llm if llm else None,  # type: ignore[arg-type]
                 datastore=datastore,
                 actuator=actuator
             )
@@ -171,14 +168,14 @@ def bootstrap_from_config_object(config: AppConfig) -> Dict[str, Any]:
     # Initialize screen state machine if available
     if HAS_SCREEN_STATE:
         try:
-            screen_state_machine = ScreenStateMachine()
+            screen_state_machine = ScreenStateMachine()  # type: ignore[possibly-unbound]
             components["screen_state_machine"] = screen_state_machine
         except Exception as e:
             logger.warning(f"Could not initialize screen state machine: {e}")
     
     # Initialize tasks using task registry
     try:
-        from ..tasks.registry import get_all_tasks
+        from ..tasks.registry import get_all_tasks  # type: ignore[attr-defined]
         tasks = get_all_tasks()
         components["tasks"] = tasks
         logger.info(f"Loaded {len(tasks)} tasks from registry")
