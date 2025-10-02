@@ -495,36 +495,425 @@ for tmpl, scale in pyramid:
 
 ---
 
+## Test Suite Consolidation Recommendations
+
+### Current State Analysis
+
+**Total Test Code:** 3,230 lines across 15 files
+
+**Test Files Distribution:**
+
+- `test_llm_client.py` - 558 lines (2 classes, extensive mocking)
+- `tests/core/test_loop.py` - 505 lines (StateLoop tests)
+- `test_state_machine.py` - 429 lines (screen detection)
+- `test_coordinates.py` - 345 lines (coordinate transformation)
+- `test_dataset_capture.py` - 239 lines (includes dhash tests)
+- `test_template_cache.py` - 200 lines
+- `test_ui_enhancements.py` - 212 lines
+- `test_resolver_harness.py` - 189 lines
+- `test_registry.py` - 145 lines
+- `test_config_validation.py` - 71 lines
+- `test_hashing.py` - 25 lines (DUPLICATE functionality)
+- `basic_test.py` - 106 lines (manual test runner)
+- `validate_implementation.py` - 208 lines (NOT pytest-compatible)
+
+
+### Critique Incorporation
+
+The testing refactor proposal was reviewed critically with the following outcomes:
+
+- Scope clarity: we will not claim a fixed elimination count.
+   Instead, we will itemize specific removals and conversions and
+   maintain a live checklist as work proceeds.
+- Preservation policy: all A-grade coordinate transform tests are
+   preserved. No eliminations in `test_coordinates.py` are planned.
+- Consolidation completeness: this plan explicitly addresses duplicate
+   hash testing, non-standard test runners, and scattered screen detection
+   tests (as called out in the PR merge report).
+- Performance trade-offs: we introduce CI strategies (markers,
+   parallelism, and smoke vs. full runs) to prevent slower integration
+   tests from degrading pipeline times.
+
+### 🔴 Critical Issues
+
+#### 1. Duplicate Hash Testing
+
+**Problem:** Hash functionality tested in two places:
+
+- `test_hashing.py` (25 lines) - tests `FrameHasher.is_stable()`
+- `test_dataset_capture.py` (239 lines) - tests `compute_dhash()`, `hamming_distance()`
+
+**Impact:** Different implementations (`FrameHasher` vs. standalone
+functions) create confusion and maintenance burden.
+
+**Recommendation:**
+
+```python
+# CONSOLIDATE INTO: tests/core/test_hashing.py
+# Move all hash tests to core/ subdirectory
+# Include both FrameHasher AND standalone functions
+# Total: ~100 lines unified
+```
+
+**Action:**
+
+```bash
+# 1. Merge tests
+mkdir -p tests/core
+mv tests/test_hashing.py tests/core/test_hashing.py
+
+# 2. Extract dhash tests from test_dataset_capture.py
+#    Move to tests/core/test_hashing.py
+
+# 3. Update test_dataset_capture.py to only test DatasetCapture class
+
+# 4. Result: Clear separation — hashing vs. dataset collection
+```
+
+#### 2. Non-Standard Test Runners
+
+**Problem:** Two files bypass pytest:
+
+- `basic_test.py` — manual test runner with return values (triggers warnings)
+- `validate_implementation.py` — shell-style validation script
+
+**Impact:**
+
+- Not discovered by pytest auto-discovery
+- Return `True`/`False` instead of using assertions (9 warnings)
+- Cannot integrate with coverage tools
+- Duplicates functionality covered by actual tests
+
+**Recommendation:**
+
+```python
+# OPTION A: Convert to pytest (preferred)
+# tests/test_bootstrap_integration.py
+import pytest
+from azl_bot.core.bootstrap import test_components, create_default_config
+
+def test_component_initialization(tmp_path):
+   """Test full bootstrap with all components."""
+   config = create_default_config()
+   config.data.base_dir = str(tmp_path)
+   assert test_components() is True
+
+# OPTION B: Keep as dev tools (not tests): move under scripts/
+# scripts/dev_validation.py
+# scripts/quick_check.py
+```
+
+**Action:**
+
+1. Convert `basic_test.py` → `tests/test_bootstrap_integration.py` (proper pytest)
+2. Move `validate_implementation.py` → `scripts/dev_validation.py` (not a test)
+3. Fix all `return True` → `assert` statements
+
+#### 3. Screen Detection Split Across Files
+
+**Problem:** Screen state testing scattered:
+
+- `test_state_machine.py` (429 lines) — extensive screen detection
+- `test_ui_enhancements.py` (212 lines) — UI state + overlays + some screen tests
+
+**Recommendation:**
+
+```python
+# Split by concern
+# tests/core/test_screen_detection.py — ScreenDetector class, OCR scoring
+# tests/ui/test_overlays.py — drawing/visualization
+# tests/ui/test_app_state.py — UIState management
+```
+
+#### 4. Performance and CI Strategy
+
+**Problem:** Longer integration tests can slow CI/CD pipelines.
+
+**Mitigations:**
+
+- Markers: tag long-running tests as `@pytest.mark.slow` and run
+   `-m "not slow"` by default in CI. Schedule a nightly job for full
+   suite including slow tests.
+- Parallelism: use `pytest-xdist` (`-n auto`) to parallelize unit and
+   integration tests.
+- Timeouts: apply `pytest-timeout` to catch hangs in CI.
+- Test selection: maintain a `smoke` marker and default CI run
+   `-m "smoke or not slow"`.
+- Workflow split: separate “unit+smoke” and “full integration” jobs;
+   cache dependencies; upload artifacts selectively.
+
+### 📊 Proposed Test Structure
+
+```text
+tests/
+├── conftest.py                      # Shared fixtures (NEW)
+│   ├── @pytest.fixture tmp_config
+│   ├── @pytest.fixture mock_device
+│   ├── @pytest.fixture mock_frame
+│   └── @pytest.fixture test_images
+│
+├── fixtures/                        # Real game screenshots (POPULATE)
+│   ├── frame_home_1080p.png
+│   ├── frame_commission_720p.png
+│   └── frame_battle_1440p.png
+│
+├── core/                            # Core component tests
+│   ├── __init__.py
+│   ├── test_bootstrap.py            # Component wiring (from basic_test.py)
+│   ├── test_capture.py              # Frame grabbing, letterbox
+│   ├── test_hashing.py              # FrameHasher + dhash functions (MERGED)
+│   ├── test_llm_client.py           # LLM integration (MOVE here)
+│   ├── test_loop.py                 # StateLoop
+│   ├── test_ocr.py                  # OCR engines (NEW)
+│   ├── test_resolver.py             # Multi-modal detection (NEW)
+│   └── test_screen_detection.py     # ScreenDetector (from state_machine)
+│
+├── tasks/                           # Task-specific tests
+│   ├── __init__.py
+│   ├── test_currencies.py           # (NEW)
+│   ├── test_commissions.py          # (NEW)
+│   ├── test_pickups.py              # (NEW)
+│   └── test_registry.py             # Task registry
+│
+├── ui/                              # UI tests
+│   ├── __init__.py
+│   ├── test_app_state.py            # UIState (from test_ui_enhancements)
+│   └── test_overlays.py             # Drawing utilities
+│
+├── integration/                     # End-to-end tests (NEW)
+│   ├── __init__.py
+│   ├── test_full_workflow.py        # Complete task execution
+│   └── test_emulator_connection.py  # Real device tests
+│
+├── test_config_validation.py        # Config schemas
+├── test_coordinates.py              # Coordinate transforms
+├── test_dataset_capture.py          # DatasetCapture only (no hash tests)
+├── test_resolver_harness.py         # Resolver debugging tool
+└── test_template_cache.py           # Template loading
+```
+
+### 🎯 Consolidation Actions
+
+#### Phase 1: Fix Immediate Issues (1-2 hours)
+
+1. **Move llm_client tests**: `test_llm_client.py` → `tests/core/`
+2. **Merge hash tests**: Combine `test_hashing.py` + dhash tests from
+   `test_dataset_capture.py`
+3. **Fix return statements**: Convert all `return True` to `assert` in
+   `basic_test.py`
+4. **Move validation script**: `validate_implementation.py` →
+   `scripts/dev_validation.py`
+
+#### Phase 2: Reorganize by Component (4-6 hours)
+
+1. **Create conftest.py**: Extract common fixtures from all test files
+2. **Split state_machine**: Separate screen detection from state
+   machine logic
+3. **Split ui_enhancements**: Separate UIState from overlay drawing
+4. **Create task tests**: Extract task-specific tests from integration
+   tests
+
+#### Phase 3: Add Missing Coverage (8-12 hours)
+
+1. **Create test_ocr.py**: Test both PaddleOCR and Tesseract
+2. **Create test_resolver.py**: Test OCR + template + ORB fusion
+3. **Create test_actuator.py**: Test tap/swipe execution
+4. **Create integration tests**: Full workflow tests
+
+### 📈 Expected Benefits
+
+#### Before Consolidation
+
+- 15 test files, 3,230 lines
+- Scattered organization (no clear structure)
+- Duplicate functionality (hash, screen detection)
+- 9 pytest warnings (return statements)
+- Hard to find relevant tests
+- No shared fixtures (repetitive setup code)
+
+#### After Consolidation
+
+- 20+ test files, ~3,500 lines (15% growth from new tests)
+- Clear hierarchy (core/tasks/ui/integration)
+- Zero duplication
+- Zero pytest warnings
+- Easy navigation by component
+- Shared fixtures reduce boilerplate by ~20%
+
+#### Maintenance Impact
+
+- **Adding new tests**: Clear where to put them
+- **Debugging failures**: Fast location by component
+- **Refactoring**: Easy to update related tests together
+- **Coverage gaps**: Obvious which components lack tests
+
+### 🔧 Migration Commands
+
+```bash
+# Phase 1: Quick Fixes
+cd tests
+
+# 1. Move LLM tests to core
+mkdir -p core
+mv test_llm_client.py core/
+
+# 2. Merge hash tests
+cat > core/test_hashing_unified.py << 'EOF'
+"""Unified hash testing - FrameHasher + standalone functions."""
+# TODO: Merge content from test_hashing.py + test_dataset_capture.py
+EOF
+
+# 3. Fix basic_test.py
+sed -i 's/return True/assert True/g' basic_test.py
+sed -i 's/return False/assert False, "Test failed"/g' basic_test.py
+
+# 4. Move validation script
+mv validate_implementation.py ../scripts/dev_validation.py
+
+# Phase 2: Reorganization (manual editing required)
+mkdir -p ui tasks integration
+
+# Run tests to verify
+pytest tests/ -v --tb=short
+```
+
+### ⚠️ Migration Risks
+
+1. **Import Path Changes**: Moving files breaks relative imports
+   - **Mitigation**: Use absolute imports (`from azl_bot.core import ...`)
+   
+2. **Fixture Dependencies**: Tests may depend on undocumented fixtures
+   - **Mitigation**: Create conftest.py FIRST, move fixtures incrementally
+   
+3. **Test Discovery**: Pytest may not find tests in new locations
+   - **Mitigation**: Ensure all dirs have `__init__.py`, run `pytest --collect-only`
+
+4. **CI Breakage**: GitHub Actions may fail after reorganization
+   - **Mitigation**: Test locally first, update CI config if needed
+
+### 🗂️ Itemized Tests Proposed for Elimination or Conversion
+
+This list provides transparency on scope; A-grade coordinate tests
+are explicitly preserved.
+
+- Eliminate: `tests/test_registry.py::test_registry_import` (trivial
+   import check; duplicates functional tests)
+- Eliminate: `tests/test_ui_enhancements.py::test_new_methods_exist`
+   (existence-only API check)
+- Eliminate: `tests/basic_test.py::test_config_loading` (duplicate of
+   `test_config_validation.py::test_valid_config`)
+- Convert (not remove): `tests/basic_test.py::test_basic_initialization`
+   → `tests/core/test_bootstrap_integration.py` (pytest-based)
+- Move (not a test): `tests/validate_implementation.py` →
+   `scripts/dev_validation.py`
+- Consolidate (not remove): all hash tests into
+   `tests/core/test_hashing.py`; remove duplicates from
+   `test_dataset_capture.py`
+
+Current tally: 3 removals, 1 conversion, 1 move, 1 consolidation.
+Additional candidates will be itemized in a follow-up audit; no
+A-grade coordinate tests will be removed.
+
+### 📋 Tracking Checklist
+
+```markdown
+#### Phase 1: Immediate Fixes
+- [ ] Move test_llm_client.py to core/
+- [ ] Merge hash tests into core/test_hashing_unified.py
+- [ ] Remove hash tests from test_dataset_capture.py
+- [ ] Fix return statements in basic_test.py
+- [ ] Move validate_implementation.py to scripts/
+- [ ] Run full test suite: `pytest tests/ -v`
+- [ ] Verify 0 warnings for return statements
+
+#### Phase 2: Reorganization
+- [ ] Create tests/conftest.py with shared fixtures
+- [ ] Create tests/core/, tests/ui/, tests/tasks/, tests/integration/
+- [ ] Split test_state_machine.py → test_screen_detection.py
+- [ ] Split test_ui_enhancements.py → test_app_state.py + test_overlays.py
+- [ ] Convert basic_test.py → test_bootstrap_integration.py
+- [ ] Verify imports work: `pytest tests/ --collect-only`
+- [ ] Run full suite: `pytest tests/ -v --tb=short`
+
+#### Phase 3: New Coverage
+- [ ] Create test_ocr.py (PaddleOCR + Tesseract)
+- [ ] Create test_resolver.py (multi-modal fusion)
+- [ ] Create test_actuator.py (tap/swipe)
+- [ ] Create tests/tasks/test_*.py for each task
+- [ ] Create integration tests with real screenshots
+- [ ] Target: 150+ tests (current: 127)
+
+#### Verification
+- [ ] All tests pass: `pytest tests/ -v`
+- [ ] Zero warnings: `pytest tests/ -W error`
+- [ ] Coverage report: `pytest tests/ --cov=azl_bot --cov-report=html`
+- [ ] CI passes: Check GitHub Actions
+```
+
+### 📊 Consolidation Impact Summary
+
+| Metric | Before | After Phase 1 | After Phase 3 | Change |
+|--------|--------|---------------|---------------|--------|
+| **Test Files** | 15 | 14 (-1) | 22 (+7) | +47% files |
+| **Total Lines** | 3,230 | 3,150 (-80) | 3,500 (+270) | +8% code |
+| **Duplicates** | 2 (hash) | 0 | 0 | -100% |
+| **Warnings** | 10 | 1 | 0 | -100% |
+| **Test Coverage** | 127 tests | 127 tests | 150+ tests | +18% tests |
+| **Fixture Files** | 0 real | 0 real | 10+ real | Real data! |
+| **Integration Tests** | 0 | 0 | 5+ | E2E coverage |
+| **Organization** | Flat | Flat | Hierarchical | Clear structure |
+
+**Key Wins:**
+
+- ✅ Zero duplicate functionality
+- ✅ Zero pytest warnings
+- ✅ Clear component boundaries
+- ✅ Shared fixtures reduce boilerplate
+- ✅ Easy to navigate and maintain
+- ✅ Ready for real game testing
+
+**Estimated Effort:** 15-20 hours total (can be split across multiple PRs)
+
+---
+
 ## Recommendations
 
 ### Immediate (Before Push)
+
 1. ✅ All tests passing - **DONE**
 2. ✅ No type errors - **DONE**
 3. ✅ Working tree clean - **DONE**
 4. ⬜ Review commit messages for clarity
 5. ⬜ Squash redundant fix commits (optional)
+6. 🔴 **CONSOLIDATE TESTS** - Fix duplicate hash tests and return statements
 
 ### Short Term (Next Sprint)
+
 1. **🚨 CRITICAL: Capture real game screenshots for testing**
 2. **🚨 CRITICAL: Benchmark dHash vs imagehash with actual data**
-3. Update CI workflow to use UV
-4. Add pre-commit validation to CI
-5. Fix SQLAlchemy deprecation warning
-6. Convert test return values to assertions
-7. Add task control UI panel
-8. Document dataset capture configuration
+3. **🚨 HIGH: Execute Test Consolidation Phase 1** (fix duplicates, return statements)
+4. Update CI workflow to use UV
+5. Add pre-commit validation to CI
+6. Fix SQLAlchemy deprecation warning
+7. ~~Convert test return values to assertions~~ (covered by consolidation #3)
+8. Add task control UI panel
+9. Document dataset capture configuration
 
 ### Medium Term (Next Quarter)
-1. **Create comprehensive test fixture library** (real screenshots at multiple resolutions)
-2. **Validate all resolver methods** (OCR, template matching, ORB) with real data
-3. **Profile actual performance** under realistic game conditions
-4. Add integration tests with emulator in CI
-5. Implement ORB feature caching (if profiling shows it's needed)
-6. Add coverage reporting to CI
-7. Create performance benchmarking suite
-8. Standardize component initialization signatures
+
+1. **Execute Test Consolidation Phase 2 & 3** (reorganize structure,
+   add missing coverage)
+2. **Create comprehensive test fixture library** (real screenshots at multiple resolutions)
+3. **Validate all resolver methods** (OCR, template matching, ORB) with real data
+4. **Profile actual performance** under realistic game conditions
+5. Add integration tests with emulator in CI
+6. Implement ORB feature caching (if profiling shows it's needed)
+7. Add coverage reporting to CI
+8. Create performance benchmarking suite
+9. Standardize component initialization signatures
 
 ### Long Term (Roadmap)
+
 1. Migrate to SQLAlchemy 2.0+ ORM API
 2. Consider pytest-xdist for parallel test execution
 3. Implement distributed task queue (for multi-device)
@@ -534,16 +923,19 @@ for tmpl, scale in pyramid:
 
 ## Appendix: Commit History
 
-```
+```text
 09c0dd5 Fix type errors after PR merges
 5a19299 Merge PR #6: Task registry and daily maintenance
 ff8369e Fix corrupted planner.py - restore complete implementation from 8a695f0
 679aaf5 Merge PR #5: Dataset capture and resolver improvements
 e3f60a2 Fix type errors and test assertions
 060f2b8 Merge PR #4: StateLoop implementation with telemetry
-97f7d3e chore: add uv env bootstrap + PR lister; fix hashing/screens; robust letterbox & LLM client; docs updated
-618f039 Merge PR #3: GUI task controls, candidate inspector, and overlay features
-6f4e097 Merge PR #2: Add config validation, optional extras, pre-commit hooks, and CI workflow
+ 97f7d3e chore: add uv env bootstrap + PR lister; fix hashing/screens;
+          robust letterbox & LLM client; docs updated
+ 618f039 Merge PR #3: GUI task controls, candidate inspector, and
+          overlay features
+ 6f4e097 Merge PR #2: Add config validation, optional extras, pre-commit
+          hooks, and CI workflow
 [... 25 more commits from PR branches ...]
 ```
 
@@ -551,9 +943,14 @@ e3f60a2 Fix type errors and test assertions
 
 ## Conclusion
 
-All 5 pull requests have been successfully merged with comprehensive conflict resolution, regression fixes, and type safety improvements. The codebase has grown from 84 to 127 passing tests with zero type errors. The autonomous merge process handled 21 conflicts across 11 files, including complex scenarios requiring manual intervention.
+All 5 pull requests have been successfully merged with comprehensive
+conflict resolution, regression fixes, and type safety improvements.
+The codebase has grown from 84 to 127 passing tests with zero type
+errors. The autonomous merge process handled 21 conflicts across 11
+files, including complex scenarios requiring manual intervention.
 
 **Key Achievements:**
+
 - ✅ Zero-dependency hashing solution (pure OpenCV)
 - ✅ Unified bootstrap supporting all new features
 - ✅ Comprehensive type annotations
@@ -561,14 +958,17 @@ All 5 pull requests have been successfully merged with comprehensive conflict re
 - ✅ 51% increase in test coverage (unit tests with synthetic data)
 
 **Testing Limitations:**
+
 - ⚠️ **No real game screenshots** - all tests use synthetic numpy arrays
 - ⚠️ **No performance benchmarks** - all claims are theoretical
 - ⚠️ **No emulator integration** - untested in real game environment
-- ⚠️ **No resolver validation** - OCR/template/ORB methods unverified with actual UI
+- ⚠️ **No resolver validation** - OCR/template/ORB methods unverified
+   with actual UI
 
 **Ready for Production:** **NO** - Requires real game testing before production use.
 
-**Recommended Next Step:** Push to origin/main and notify team of infrastructure changes (CI, pre-commit hooks, dataset capture).
+**Recommended Next Step:** Push to origin/main and notify team of
+infrastructure changes (CI, pre-commit hooks, dataset capture).
 
 ---
 

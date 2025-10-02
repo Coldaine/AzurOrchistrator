@@ -12,10 +12,9 @@ def test_registry_import():
     try:
         from azl_bot.tasks import registry
         print("✓ Registry module imports successfully")
-        return True
     except Exception as e:
         print(f"✗ Registry import failed: {e}")
-        return False
+        assert False, f"Registry import failed: {e}"
 
 
 def test_registry_api():
@@ -47,13 +46,12 @@ def test_registry_api():
         assert task == {"name": "test_task"}, "get_task returned wrong result"
         
         print("✓ Registry API tests passed")
-        return True
         
     except Exception as e:
         print(f"✗ Registry API test failed: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        assert False, f"Registry API test failed: {e}"
 
 
 def test_global_registry():
@@ -70,13 +68,12 @@ def test_global_registry():
         assert result == False, "has_task should return False for nonexistent task"
         
         print("✓ Global registry functions work")
-        return True
         
     except Exception as e:
         print(f"✗ Global registry test failed: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        assert False, f"Global registry test failed: {e}"
 
 
 def test_task_registration():
@@ -96,16 +93,15 @@ def test_task_registration():
                 print(f"  ✓ {task_name:20s} - {metadata.description}")
             else:
                 print(f"  ✗ {task_name} not registered")
-                return False
+                assert False, f"{task_name} not registered"
         
         print(f"✓ All {len(expected_tasks)} built-in tasks registered")
-        return True
         
     except Exception as e:
         print(f"✗ Task registration test failed: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        assert False, f"Task registration test failed: {e}"
 
 
 def main():
@@ -126,10 +122,11 @@ def main():
     for test in tests:
         print(f"\nRunning: {test.__name__}")
         try:
-            if test():
-                passed += 1
-            else:
-                failed += 1
+            test()
+            passed += 1
+        except AssertionError as e:
+            print(f"✗ Test {test.__name__} failed: {e}")
+            failed += 1
         except Exception as e:
             print(f"✗ Test {test.__name__} failed with exception: {e}")
             failed += 1

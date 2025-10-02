@@ -7,7 +7,7 @@ from pathlib import Path
 # Add the project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from azl_bot.core.bootstrap import test_components
+from azl_bot.core.bootstrap import test_components as verify_components
 from azl_bot.core.configs import create_default_config
 
 
@@ -21,16 +21,15 @@ def test_basic_initialization():
     config.data.base_dir = str(tempfile.mkdtemp())
     
     try:
-        success = test_components()
+        success = verify_components()
         if success:
             print("✓ Component initialization test passed")
-            return True
         else:
             print("✗ Component initialization test failed")
-            return False
+            assert False, "Component initialization test failed"
     except Exception as e:
         print(f"✗ Component initialization test failed with exception: {e}")
-        return False
+        assert False, f"Component initialization test failed with exception: {e}"
 
 
 def test_config_loading():
@@ -63,11 +62,9 @@ def test_config_loading():
         # Cleanup
         temp_path.unlink()
         
-        return True
-        
     except Exception as e:
         print(f"✗ Configuration test failed: {e}")
-        return False
+        assert False, f"Configuration test failed: {e}"
 
 
 def main():
@@ -85,10 +82,11 @@ def main():
     
     for test in tests:
         try:
-            if test():
-                passed += 1
-            else:
-                failed += 1
+            test()
+            passed += 1
+        except AssertionError as e:
+            print(f"✗ Test {test.__name__} failed: {e}")
+            failed += 1
         except Exception as e:
             print(f"✗ Test {test.__name__} failed with exception: {e}")
             failed += 1

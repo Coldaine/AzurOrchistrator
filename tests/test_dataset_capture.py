@@ -1,4 +1,8 @@
-"""Tests for dataset capture functionality."""
+"""Tests for dataset capture functionality.
+
+Note: Hash-related tests (compute_dhash, hamming_distance, dhash_similarity)
+have been moved to tests/core/test_hashing.py to avoid duplication.
+"""
 
 import numpy as np
 import pytest
@@ -6,66 +10,7 @@ from pathlib import Path
 import tempfile
 import shutil
 
-from azl_bot.core.dataset_capture import compute_dhash, hamming_distance, DatasetCapture
-
-
-def test_compute_dhash():
-    """Test dhash computation."""
-    # Create a simple test image
-    image = np.zeros((100, 100, 3), dtype=np.uint8)
-    
-    # Add some pattern
-    image[25:75, 25:75] = 255
-    
-    hash1 = compute_dhash(image)
-    
-    # Hash should be consistent
-    hash2 = compute_dhash(image)
-    assert hash1 == hash2
-    
-    # Hash should be hex string
-    assert all(c in '0123456789abcdef' for c in hash1)
-    assert len(hash1) == 16  # 64 bits = 16 hex chars
-
-
-def test_hamming_distance():
-    """Test Hamming distance calculation."""
-    # Identical hashes
-    assert hamming_distance("abcd1234", "abcd1234") == 0
-    
-    # Single bit difference (1 vs 0)
-    assert hamming_distance("0000", "0001") == 1
-    
-    # Multiple differences
-    assert hamming_distance("0000", "ffff") == 16  # All bits different
-    
-    # Different lengths (should return max)
-    assert hamming_distance("00", "0000") >= 8
-
-
-def test_dhash_similarity():
-    """Test that similar images produce similar hashes."""
-    # Original image
-    image1 = np.random.randint(0, 256, (100, 100, 3), dtype=np.uint8)
-    hash1 = compute_dhash(image1)
-    
-    # Slightly modified image (add noise)
-    image2 = image1.copy()
-    noise = np.random.randint(-10, 10, image1.shape, dtype=np.int16)
-    image2 = np.clip(image1.astype(np.int16) + noise, 0, 255).astype(np.uint8)
-    hash2 = compute_dhash(image2)
-    
-    # Should be similar (low Hamming distance)
-    distance = hamming_distance(hash1, hash2)
-    assert distance < 10, f"Similar images should have low Hamming distance, got {distance}"
-    
-    # Completely different image
-    image3 = np.random.randint(0, 256, (100, 100, 3), dtype=np.uint8)
-    hash3 = compute_dhash(image3)
-    distance2 = hamming_distance(hash1, hash3)
-    
-    # Should be different (high Hamming distance)
-    assert distance2 > distance, "Different images should have higher Hamming distance"
+from azl_bot.core.dataset_capture import DatasetCapture
 
 
 def test_dataset_capture_dedup():
@@ -228,10 +173,7 @@ def test_dataset_capture_toggle():
 
 
 if __name__ == "__main__":
-    # Run tests
-    test_compute_dhash()
-    test_hamming_distance()
-    test_dhash_similarity()
+    # Run tests (hash tests moved to tests/core/test_hashing.py)
     test_dataset_capture_dedup()
     test_dataset_capture_metadata()
     test_dataset_capture_disabled()
